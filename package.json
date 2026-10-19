@@ -1,0 +1,1 @@
+{ "name": "sf-erp", "private": true, "type": "module", "scripts": { "start": "node server.js --open" } }

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SF ERP</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232f6f9f'/><path d='M4 5h8M4 8h8M4 11h5' stroke='white' stroke-width='1.5'/></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">SF ERP</span>
+    <nav>
+      <a href="#employees" data-page="employees">員工主檔</a>
+      <a href="#attendance" data-page="attendance">出缺勤登記</a>
+      <a href="#overview" data-page="overview">請假總覽</a>
+      <a href="#rules" data-page="rules">請假制度</a>
+    </nav>
+  </header>
+  <main id="app"></main>
+
+  <dialog id="empDialog">
+    <form id="empForm" method="dialog">
+      <h2 id="empDialogTitle">新增員工</h2>
+      <div class="form-grid">
+        <label>姓名 <span class="req">*</span><input name="name" required></label>
+        <label>性別 <span class="req">*</span>
+          <select name="gender" required><option value="">請選擇</option><option value="M">男</option><option value="F">女</option></select>
+        </label>
+        <label>薪資（月本薪） <span class="req">*</span><input name="salary" type="number" min="1" step="1" required></label>
+        <label>到職日 <span class="req">*</span><input name="hireDate" type="date" required></label>
+        <label>離職日<input name="leaveDate" type="date"></label>
+        <label>信箱<input name="email" type="email"></label>
+        <label>電話<input name="phone"></label>
+      </div>
+      <p class="form-error" id="empError"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn" id="empCancel">取消</button>
+        <button type="submit" class="btn primary">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dayDialog" class="day-dialog"><div id="dayBody"></div></dialog>
+
+  <input type="file" id="calendarFile" accept=".xlsx" hidden>
+  <div id="toast" role="status" popover="manual"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

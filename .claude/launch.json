@@ -1,0 +1,8 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "sf-erp", "runtimeExecutable": "node", "runtimeArgs": ["server.js", "--data=test-data"], "port": 3000 },
+    { "name": "sf-erp-web", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "web", "run", "dev", "--", "--port", "5173", "--strictPort"], "port": 5173 },
+    { "name": "sf-erp-lite-build", "runtimeExecutable": "npx", "runtimeArgs": ["--prefix", "web", "vite", "preview", "web", "--port", "4173", "--strictPort"], "port": 4173 }
+  ]
+}

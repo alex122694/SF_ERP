@@ -1,0 +1,42 @@
+{
+  "_說明": "規則測試案例：輕量版（TypeScript）與標準版（Java）都必須通過同一份案例。日期一律 YYYY-MM-DD，期間的 end 不含當天。",
+  "leaveMinutes": [
+    { "start": "09:30", "end": "18:30", "minutes": 450 },
+    { "start": "09:30", "end": "12:00", "minutes": 150 },
+    { "start": "13:30", "end": "18:30", "minutes": 300 },
+    { "start": "11:00", "end": "14:00", "minutes": 90 },
+    { "start": "12:00", "end": "13:30", "minutes": 0 },
+    { "start": "09:30", "end": "10:30", "minutes": 60 }
+  ],
+  "deduction": [
+    { "minutes": 300, "salary": 36000, "payRatio": 0.5, "amount": 375 },
+    { "minutes": 60, "salary": 36000, "payRatio": 0, "amount": 150 },
+    { "minutes": 450, "salary": 36000, "payRatio": 1, "amount": 0 },
+    { "minutes": 12, "salary": 33000, "payRatio": 0, "amount": 28 },
+    { "minutes": 5, "salary": 42000, "payRatio": 0, "amount": 15 },
+    { "minutes": 150, "salary": 33000, "payRatio": 0.5, "amount": 172 },
+    { "minutes": 150, "salary": 38000, "payRatio": 0, "amount": 396 }
+  ],
+  "cashOut": [
+    { "hours": 22.5, "salary": 36000, "amount": 3375 },
+    { "hours": 5, "salary": 42000, "amount": 875 },
+    { "hours": 0.5, "salary": 33333, "amount": 69 }
+  ],
+  "annualDaysForYears": [
+    { "years": 1, "days": 7 }, { "years": 2, "days": 10 }, { "years": 3, "days": 14 }, { "years": 4, "days": 14 },
+    { "years": 5, "days": 15 }, { "years": 9, "days": 15 }, { "years": 10, "days": 16 }, { "years": 14, "days": 20 },
+    { "years": 24, "days": 30 }, { "years": 30, "days": 30 }
+  ],
+  "annualPeriod": [
+    { "base": "2021-03-01", "date": "2026-10-19", "period": { "start": "2026-03-01", "end": "2027-03-01", "days": 15 } },
+    { "base": "2026-02-02", "date": "2026-10-19", "period": { "start": "2026-08-02", "end": "2027-02-02", "days": 3 } },
+    { "base": "2026-05-01", "date": "2026-10-19", "period": null },
+    { "base": "2025-08-31", "date": "2026-03-01", "period": { "start": "2026-02-28", "end": "2026-08-31", "days": 3 } },
+    { "base": "2012-05-01", "date": "2026-10-19", "period": { "start": "2026-05-01", "end": "2027-05-01", "days": 20 } }
+  ],
+  "seniority": [
+    { "from": "2021-03-01", "asOf": "2026-10-19", "text": "5 年 7 個月" },
+    { "from": "2019-11-01", "asOf": "2026-10-19", "text": "6 年 11 個月" },
+    { "from": "2026-10-20", "asOf": "2026-10-19", "text": "0 年 0 個月" }
+  ]
+}
