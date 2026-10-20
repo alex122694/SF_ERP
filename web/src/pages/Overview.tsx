@@ -1,10 +1,12 @@
-// 請假總覽（規格第 11 節）
-import { Fragment } from 'react';
+// 請假總覽（規格第 11 節）：每位員工一組，假別、時數、扣款逐列；姓名、本薪、總扣款金額跨列合併
 import { go, useApp } from '../ui/app-context';
 import { Icon } from '../ui/icons';
-import { amountText, downloadCsv, fmtHours, mdText, money, ntd, typeColor } from '../ui/format';
-import { annualNow, typeOf } from '../ui/derive';
-import { daysInMonth } from '../rules/rules';
+import { Annual, LeaveAmount } from '../ui/annual-unit';
+import { amountText, downloadBlob, fmtHours, mdText, money, ntd, typeColor, typeName } from '../ui/format';
+import { typeOf } from '../ui/derive';
+import { daysInMonth, type LeaveType } from '../rules/rules';
+import { buildXlsx, XLSX_TYPE } from '../data/xlsxWrite';
+import { t } from '../i18n';
 
 export function OverviewPage() {
   const { st, today, route } = useApp();
@@ -33,117 +35,136 @@ export function OverviewPage() {
     .filter((e) => recs.some((l) => l.employeeId === e.id) || (e.hireDate <= to && (!e.leaveDate || e.leaveDate >= from)))
     .map((e) => {
       const mine = recs.filter((l) => l.employeeId === e.id);
-      return { e, mine, by: types.map((t) => sumOf(mine, t.code)), ded: mine.reduce((s, l) => s + l.deduction, 0), left: annualNow(st, e, today).remaining };
+      // 這段期間有請的假別，依假別排序
+      const parts = types
+        .map((tp) => ({ tp, list: mine.filter((l) => l.type === tp.code) }))
+        .filter((x) => x.list.length)
+        .map(({ tp, list }) => ({ tp, hours: list.reduce((s, l) => s + l.hours, 0), ded: list.reduce((s, l) => s + l.deduction, 0) }));
+      return { e, mine, parts, ded: mine.reduce((s, l) => s + l.deduction, 0) };
     });
-  const totals = types.map((t) => sumOf(recs, t.code));
+  const totals = types.map((tp) => sumOf(recs, tp.code));
   const dedTotal = rows.reduce((s, r) => s + r.ded, 0);
-  const maxH = Math.max(1, ...rows.map((r) => r.by.reduce((s, h, i) => s + (types[i].code === 'late' ? 0 : h), 0)));
+  const genderText = (g: string) => (g === 'F' ? t('女') : t('男'));
+  const partHours = (tp: LeaveType, hours: number) => amountText({ type: tp.code, hours });
 
-  const exportCsv = () => downloadCsv(`請假總覽_${month ? prefix : `${year}全年`}.csv`, [
-    ['員工', ...types.map((t) => (t.code === 'late' ? '遲到(分)' : `${t.name}(h)`)), '扣除合計', '特休剩餘(h)'],
-    ...rows.map((r) => [r.e.name, ...r.by.map((h, i) => show(types[i].code, h)), r.ded, fmtHours(r.left)]),
-    ['合計', ...totals.map((h, i) => show(types[i].code, h)), dedTotal, ''],
-  ]);
+  // 匯出 Excel：一位員工一列，假別、時數、扣款金額在同一格內分行對齊；全部置中，列高依行數最多的一格
+  // 只有一行時保留數字，Excel 才能加總
+  const lines = (r: (typeof rows)[number], f: (p: (typeof r.parts)[number]) => string | number) =>
+    (r.parts.length === 1 ? f(r.parts[0]) : r.parts.map(f).join('\n'));
+  const exportXlsx = () => {
+    const sheet = t('請假總覽');
+    const rowsOut = [
+      [t('姓名'), t('性別'), t('本薪'), t('假別'), t('時數'), t('扣款金額'), t('總扣款金額')],
+      ...rows.map((r) => [
+        r.e.name, genderText(r.e.gender), r.e.salary,
+        lines(r, (p) => typeName(p.tp)), lines(r, (p) => partHours(p.tp, p.hours)), lines(r, (p) => p.ded), r.ded,
+      ]),
+      [t('合計 {0} 人', [rows.length]), '', '', '', '', dedTotal, dedTotal],
+    ];
+    const bytes = buildXlsx(sheet, { rows: rowsOut, widths: [14, 8, 12, 14, 12, 12, 14], boldRows: [0, rowsOut.length - 1] });
+    downloadBlob(`${sheet}_${month ? prefix : t('{0}全年', [year])}.xlsx`, new Blob([bytes], { type: XLSX_TYPE }));
+  };
 
   return (
     <div className="page">
       <div className="page-head">
-        <h1 style={{ flex: '1 1 240px' }}>請假總覽</h1>
-        <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>年度
+        <h1 style={{ flex: '1 1 240px' }}>{t('請假總覽')}</h1>
+        <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>{t('年度')}
           <select className="input" style={{ width: 'auto' }} value={year} onChange={(e) => nav({ y: e.target.value })}>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </label>
-        <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>月份
+        <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>{t('月份')}
           <select className="input" style={{ width: 'auto' }} value={month || 'all'} onChange={(e) => nav({ m: e.target.value })}>
-            <option value="all">全年</option>
-            {Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>{i + 1} 月</option>)}
+            <option value="all">{t('全年')}</option>
+            {Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>{t('{0} 月', [i + 1])}</option>)}
           </select>
         </label>
-        <button type="button" className="btn primary" onClick={exportCsv}><Icon name="download" size={18} stroke={1.8} />匯出 CSV</button>
+        <button type="button" className="btn primary" onClick={exportXlsx}><Icon name="download" size={18} stroke={1.8} />{t('匯出 Excel')}</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 12 }}>
-        {types.map((t, i) => (
-          <div key={t.code} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span className="muted" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}><span className="dot" style={{ background: typeColor(t) }} />{t.name}</span>
-            <b className="num" style={{ fontSize: 24 }}>{show(t.code, totals[i])} {t.code === 'late' ? '分' : 'h'}</b>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))', gap: 12 }}>
+        {types.map((tp, i) => (
+          <div key={tp.code} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="muted" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}><span className="dot" style={{ background: typeColor(tp) }} />{typeName(tp)}</span>
+            <b className="num" style={{ fontSize: 24 }}>{tp.code === 'annual' ? <Annual h={totals[i]} /> : `${show(tp.code, totals[i])} ${tp.code === 'late' ? t('分') : 'h'}`}</b>
           </div>
         ))}
       </div>
 
       <div className="card table-box">
-        {rows.length === 0 ? <div className="empty">這段期間沒有員工資料。</div> : (
-          <table className="tbl">
+        {rows.length === 0 ? <div className="empty">{t('這段期間沒有員工資料。')}</div> : (
+          <table className="tbl ov">
             <thead>
               <tr>
-                <th>員工</th><th style={{ minWidth: 180 }}>分布</th>
-                {types.map((t) => <th key={t.code} className="r">{t.code === 'late' ? '遲到(分)' : `${t.name} h`}</th>)}
-                <th className="r">扣除合計</th><th className="r">特休剩餘 h</th>
+                <th>{t('姓名')}</th><th className="r">{t('本薪')}</th><th>{t('假別')}</th>
+                <th className="r">{t('時數')}</th><th className="r">{t('扣款金額')}</th><th className="r">{t('總扣款金額')}</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((r) => {
-                const isOpen = open === r.e.id;
-                return (
-                  <Fragment key={r.e.id}>
-                    <tr className={isOpen ? 'click open' : 'click'} onClick={() => nav({ open: isOpen ? 0 : r.e.id })} aria-expanded={isOpen}>
-                      <td>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <Icon name="right" size={14} stroke={2} style={{ transform: isOpen ? 'rotate(90deg)' : undefined, color: isOpen ? 'var(--accent)' : 'var(--muted)' }} />
-                          <span className="av sm">{r.e.name[0]}</span><b>{r.e.name}</b>
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', height: 10, borderRadius: 99, overflow: 'hidden', background: 'var(--raised)', width: 160 }}>
-                          {r.by.map((h, i) => (types[i].code === 'late' || !h ? null : <span key={i} style={{ width: (h / maxH) * 160, background: typeColor(types[i]) }} />))}
-                        </div>
-                      </td>
-                      {r.by.map((h, i) => <td key={i} className={h ? 'r' : 'r zero'}>{h ? show(types[i].code, h) : '—'}</td>)}
-                      <td className="r"><b>{ntd(r.ded)}</b></td>
-                      <td className="r">{fmtHours(r.left)}</td>
-                    </tr>
-                    {isOpen && (
-                      <tr>
-                        <td colSpan={types.length + 4} style={{ padding: '4px 16px 16px 60px', background: 'var(--accent-soft)', whiteSpace: 'normal' }}>
-                          {r.mine.length === 0 ? <span className="muted">這段期間沒有紀錄。</span> : (
-                            <table style={{ borderCollapse: 'collapse', fontSize: 13 }}>
-                              <thead><tr>{['日期', '假別', '時間', '時數', '扣除', '理由'].map((h) => <th key={h} style={{ textAlign: 'left', padding: '6px 16px 6px 0', color: 'var(--muted)' }}>{h}</th>)}</tr></thead>
-                              <tbody>
-                                {r.mine.map((l) => {
-                                  const t = typeOf(st, l.type);
-                                  return (
-                                    <tr key={l.id}>
-                                      <td style={{ padding: '4px 16px 4px 0' }} className="num">{mdText(l.date)}</td>
-                                      <td style={{ padding: '4px 16px 4px 0' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span className="dot" style={{ background: typeColor(t) }} />{t?.name}</span></td>
-                                      <td style={{ padding: '4px 16px 4px 0' }} className="muted num">{l.start}–{l.end}</td>
-                                      <td style={{ padding: '4px 16px 4px 0' }} className="num">{amountText(l)}</td>
-                                      <td style={{ padding: '4px 16px 4px 0' }} className="num">{money(l.deduction)}</td>
-                                      <td style={{ padding: '4px 0' }} className="muted">{l.reason || '—'}</td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          )}
+            {rows.map((r) => {
+              const isOpen = open === r.e.id;
+              const span = Math.max(1, r.parts.length);
+              const toggle = () => nav({ open: isOpen ? 0 : r.e.id });
+              const lines = r.parts.length ? r.parts : [null];
+              return (
+                <tbody key={r.e.id} className={`grp ${r.e.gender === 'F' ? 'f' : 'm'}${isOpen ? ' open' : ''}`}>
+                  {lines.map((p, i) => (
+                    <tr key={p?.tp.code ?? 'none'} className="click" onClick={toggle} aria-expanded={i === 0 ? isOpen : undefined}>
+                      {i === 0 && <>
+                        <td rowSpan={span} className="merged">
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Icon name="right" size={14} stroke={2} style={{ transform: isOpen ? 'rotate(90deg)' : undefined, color: isOpen ? 'var(--accent)' : 'var(--muted)' }} />
+                            <span className="av sm">{r.e.name[0]}</span>
+                            <b>{r.e.name}</b>
+                            <span className="sr-only">{genderText(r.e.gender)}</span>
+                          </span>
                         </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
+                        <td rowSpan={span} className="r merged">{money(r.e.salary)}</td>
+                      </>}
+                      {p ? <>
+                        <td className="sub"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span className="dot" style={{ background: typeColor(p.tp) }} />{typeName(p.tp)}</span></td>
+                        <td className="r sub">{p.tp.code === 'annual' ? <Annual h={p.hours} /> : partHours(p.tp, p.hours)}</td>
+                        <td className={p.ded ? 'r sub' : 'r sub zero'}>{money(p.ded)}</td>
+                      </> : <td colSpan={3} className="sub zero">{t('這段期間沒有紀錄。')}</td>}
+                      {i === 0 && <td rowSpan={span} className="r merged"><b>{ntd(r.ded)}</b></td>}
+                    </tr>
+                  ))}
+                  {isOpen && r.mine.length > 0 && (
+                    <tr className="detail">
+                      <td colSpan={6} style={{ padding: '4px 16px 16px 60px', background: 'var(--accent-soft)', whiteSpace: 'normal' }}>
+                        <table style={{ borderCollapse: 'collapse', fontSize: 13 }}>
+                          <thead><tr>{[t('日期'), t('假別'), t('時間'), t('時數'), t('扣除'), t('理由')].map((h) => <th key={h} style={{ textAlign: 'left', padding: '6px 16px 6px 0', color: 'var(--muted)' }}>{h}</th>)}</tr></thead>
+                          <tbody>
+                            {r.mine.map((l) => {
+                              const tp = typeOf(st, l.type);
+                              return (
+                                <tr key={l.id}>
+                                  <td style={{ padding: '4px 16px 4px 0' }} className="num">{mdText(l.date)}</td>
+                                  <td style={{ padding: '4px 16px 4px 0' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span className="dot" style={{ background: typeColor(tp) }} />{typeName(tp)}</span></td>
+                                  <td style={{ padding: '4px 16px 4px 0' }} className="muted num">{l.start}–{l.end}</td>
+                                  <td style={{ padding: '4px 16px 4px 0' }} className="num"><LeaveAmount rec={l} /></td>
+                                  <td style={{ padding: '4px 16px 4px 0' }} className="num">{money(l.deduction)}</td>
+                                  <td style={{ padding: '4px 0' }} className="muted">{l.reason || '—'}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              );
+            })}
             <tfoot>
               <tr>
-                <td>合計 {rows.length} 人</td><td />
-                {totals.map((h, i) => <td key={i} className="r">{show(types[i].code, h)}</td>)}
-                <td className="r">{ntd(dedTotal)}</td><td />
+                <td colSpan={5}>{t('合計 {0} 人', [rows.length])}</td>
+                <td className="r">{ntd(dedTotal)}</td>
               </tr>
             </tfoot>
           </table>
         )}
       </div>
-      <p className="muted small" style={{ margin: 0 }}>點一下員工列可展開明細。CSV 以 UTF-8 BOM 輸出，Excel 直接開啟不會亂碼；遲到欄名為「遲到(分)」。</p>
     </div>
   );
 }

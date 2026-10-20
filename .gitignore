@@ -1,6 +1,6 @@
-data/
+/data/
 node_modules/
-test-data/
+/test-data/
 dist/
 release/*
 !release/SF ERP-lite.zip

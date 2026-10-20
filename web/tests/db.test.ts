@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import { Db, UserError, calendarsOf } from '../src/data/db';
+import { msg } from '../src/rules/msg';
+import { MIGRATIONS } from '../src/data/schema';
 import { parseGovCalendar } from '../src/data/calendarXlsx';
 import { importLegacyJson } from '../src/data/legacyImport';
 import { makeGovCalendar } from './helpers/govCalendar';
@@ -38,12 +40,29 @@ describe('行事曆 xlsx', () => {
   });
   it('重新匯入不覆蓋手動修改', async () => {
     const { db } = await seeded();
-    db.setDay('2026-10-09', false);
+    db.setDay('2026-10-09', false, '補班');
     const r = db.importCalendar(2026, ['2026-10-09'], 'again.xlsx');
     expect(r.keptOverrides).toBe(1);
     expect(calendarsOf(db.state().days).isHoliday('2026-10-09')).toBe(false);
     db.resetDay('2026-10-09');
     expect(calendarsOf(db.state().days).isHoliday('2026-10-09')).toBe(true);
+  });
+});
+
+describe('手動改放假日／上班日', () => {
+  it('必須填原因；改回與政府日曆相同時清掉原因', async () => {
+    const { db } = await seeded();
+    expect(() => db.setDay('2026-10-20', true, '  ')).toThrow('請輸入手動修改的原因');
+    db.setDay('2026-10-20', true, ' 颱風停班 ');
+    expect(db.state().days.get('2026-10-20')).toEqual({ gov: false, override: true, reason: '颱風停班' });
+    db.setDay('2026-10-20', false);
+    expect(db.state().days.get('2026-10-20')).toEqual({ gov: false, override: null, reason: null });
+    db.setDay('2026-10-17', false, '補班');
+    db.resetDay('2026-10-17');
+    expect(db.state().days.get('2026-10-17')).toMatchObject({ override: null, reason: null });
+  });
+  it('預設的原因快選', () => {
+    expect(JSON.parse(Db.open(SQL).state().settings.day_reasons)).toEqual(['颱風停班', '公司自訂休假', '補班', '公司活動']);
   });
 });
 
@@ -77,6 +96,18 @@ describe('Db', () => {
     expect(() => db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'annual', start: '09:30', end: '12:00', reason: '' })).toThrow('已結清');
     expect(() => db.settle(id, '2026-03-01', 'cash', '2027-02-10')).toThrow(UserError);
   });
+  it('升級時舊特休紀錄換算成半天單位', async () => {
+    const old = new SQL.Database();
+    old.exec(MIGRATIONS[0]); old.exec(MIGRATIONS[1]); old.exec('PRAGMA user_version = 2');
+    old.exec(`INSERT INTO employee (name, gender, salary, hire_date, annual_base_date, created_at, updated_at) VALUES ('甲', 'F', 36000, '2021-03-01', '2021-03-01', '', '')`);
+    for (const [date, type, start, end, hours] of [['2026-10-19', 'annual', '09:30', '12:00', 2.5], ['2026-10-20', 'annual', '13:30', '18:30', 5],
+      ['2026-10-21', 'annual', '09:30', '18:30', 7.5], ['2026-10-22', 'sick', '09:30', '12:00', 2.5]]) {
+      old.run(`INSERT INTO leave_record (employee_id, date, type_code, start_time, end_time, hours, deduction, created_at, updated_at) VALUES (1, ?, ?, ?, ?, ?, 0, '', '')`, [date, type, start, end, hours]);
+    }
+    const st = Db.open(SQL, old.export()).state();
+    expect(st.leaves.map((l) => l.hours)).toEqual([4, 4, 8, 2.5]);
+    expect(st.leaveTypes.find((t) => t.code === 'annual')?.unitMinutes).toBe(240);
+  });
   it('匯出再開啟資料不變', async () => {
     const { db } = await seeded();
     const again = Db.open(SQL, db.export()).state();
@@ -87,7 +118,7 @@ describe('Db', () => {
     const { db } = await seeded();
     expect(() => db.tx(() => {
       db.importCalendar(2027, [], 'x.xlsx');
-      throw new UserError('boom');
+      throw new UserError(msg('boom'));
     })).toThrow('boom');
     expect(db.state().calendarYears.map((c) => c.year)).toEqual([2026]);
   });
@@ -110,7 +141,26 @@ describe('舊版 db.json 匯入', () => {
     const st = db.state();
     expect(st.employees[0]).toMatchObject({ name: '測試員工', annualBaseDate: '2021-03-01' });
     expect(calendarsOf(st.days).isHoliday('2026-10-17')).toBe(true);
-    expect(st.days.get('2026-10-24')).toEqual({ gov: false, override: false });
+    expect(st.days.get('2026-10-24')).toEqual({ gov: false, override: false, reason: null });
+  });
+  it('時數與扣款用規則重新計算，不採用檔案裡的數字', () => {
+    const db = Db.open(SQL);
+    const bad = { ...legacy, leaves: [{ ...legacy.leaves[0], hours: 99, amount: 99999 }, { id: 3, empId: 1, date: '2026-10-20', type: 'annual', start: '09:30', end: '12:00', hours: 2.5, amount: 0 }] };
+    importLegacyJson(db, JSON.stringify(bad));
+    expect(db.state().leaves.map((l) => [l.hours, l.deduction])).toEqual([[5, 375], [4, 0]]);
+  });
+  it('格式錯誤的紀錄整批取消', () => {
+    const cases = [
+      { ...legacy.leaves[0], date: '2026-13-40' },
+      { ...legacy.leaves[0], start: '18:30', end: '13:30' },
+      { ...legacy.leaves[0], empId: 9 },
+    ];
+    for (const l of cases) {
+      const db = Db.open(SQL);
+      expect(() => importLegacyJson(db, JSON.stringify({ ...legacy, leaves: [l] }))).toThrow(UserError);
+      expect(db.state().employees).toHaveLength(0);
+    }
+    expect(() => importLegacyJson(Db.open(SQL), JSON.stringify({ ...legacy, employees: [{ ...legacy.employees[0], gender: 'X' }] }))).toThrow('員工資料不完整');
   });
   it('已有資料時拒絕匯入', () => {
     const db = Db.open(SQL);

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import cases from '../../shared/rules-cases.json';
 import {
-  DEFAULT_LEAVE_TYPES, annualDaysForYears, annualPeriod, annualStatus, buildSettlement, cashOut, checkLeave,
+  DEFAULT_LEAVE_TYPES, annualDaysForYears, annualMinutes, annualPeriod, annualStatus, buildSettlement, cashOut, checkLeave,
   checkEmployee, deduction, leaveMinutes, seniorityText, settlementsDue,
-  type Employee, type LeaveContext, type LeaveRecord, type Settlement,
+  type Employee, type LeaveCheck, type LeaveContext, type LeaveRecord, type Settlement,
 } from '../src/rules/rules';
 
 describe('shared/rules-cases.json', () => {
@@ -16,7 +16,7 @@ describe('shared/rules-cases.json', () => {
     const p = annualPeriod(c.base, c.date);
     expect(p && { start: p.start, end: p.end, days: p.days }).toEqual(c.period);
   });
-  it.each(cases.seniority)('seniority $from', (c) => expect(seniorityText(c.from, c.asOf)).toBe(c.text));
+  it.each(cases.seniority)('seniority $from', (c) => expect(String(seniorityText(c.from, c.asOf))).toBe(c.text));
 });
 
 const emp = (over: Partial<Employee> = {}): Employee => ({
@@ -25,7 +25,7 @@ const emp = (over: Partial<Employee> = {}): Employee => ({
 });
 let nextId = 100;
 const rec = (date: string, type: string, start: string, end: string, employeeId = 1): LeaveRecord => ({
-  id: nextId++, employeeId, date, type, start, end, hours: leaveMinutes(start, end) / 60, deduction: 0, reason: '',
+  id: nextId++, employeeId, date, type, start, end, hours: (type === 'annual' ? annualMinutes(start, end) : leaveMinutes(start, end)) / 60, deduction: 0, reason: '',
 });
 const ctx = (over: Partial<LeaveContext> = {}): LeaveContext => ({
   employees: [emp(), emp({ id: 2, name: '林志明', gender: 'M', salary: 42000 })],
@@ -37,6 +37,9 @@ const input = (over: Partial<Parameters<typeof checkLeave>[0]> = {}) => ({
   employeeId: 1, date: '2026-10-19', type: 'sick', start: '13:30', end: '18:30', reason: '', ...over,
 });
 
+/** 錯誤訊息的中文全文 */
+const errOf = (r: LeaveCheck) => (r.ok ? null : String(r.error));
+
 describe('checkLeave', () => {
   it('算出時數與扣款', () => {
     const r = checkLeave(input(), ctx());
@@ -47,8 +50,8 @@ describe('checkLeave', () => {
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '10:01' }), ctx()).ok).toBe(false);
   });
   it('放假日、未匯入年度不能登記', () => {
-    expect(checkLeave(input({ date: '2026-10-09' }), ctx())).toMatchObject({ ok: false, error: expect.stringContaining('放假日') });
-    expect(checkLeave(input({ date: '2027-01-04' }), ctx())).toMatchObject({ ok: false, error: '請先匯入 2027 年行事曆' });
+    expect(errOf(checkLeave(input({ date: '2026-10-09' }), ctx()))).toContain('放假日');
+    expect(errOf(checkLeave(input({ date: '2027-01-04' }), ctx()))).toBe('請先匯入 2027 年行事曆');
   });
   it('生理假限女性、特休只能選時段', () => {
     expect(checkLeave(input({ employeeId: 2, type: 'menstrual' }), ctx()).ok).toBe(false);
@@ -56,16 +59,23 @@ describe('checkLeave', () => {
   });
   it('同一天時段不能重疊', () => {
     const c = ctx({ leaves: [rec('2026-10-19', 'personal', '09:30', '14:00')] });
-    expect(checkLeave(input(), c)).toMatchObject({ ok: false, error: expect.stringContaining('重疊') });
+    expect(errOf(checkLeave(input(), c))).toContain('重疊');
     expect(checkLeave(input({ start: '14:00' }), c).ok).toBe(true);
   });
+  it('特休以半天為單位：上午、下午各 4h，全天 8h，扣款 0', () => {
+    expect(checkLeave(input({ type: 'annual', start: '09:30', end: '12:00' }), ctx())).toMatchObject({ ok: true, hours: 4, deduction: 0 });
+    expect(checkLeave(input({ type: 'annual', start: '13:30', end: '18:30' }), ctx())).toMatchObject({ ok: true, hours: 4, deduction: 0 });
+    expect(checkLeave(input({ type: 'annual', start: '09:30', end: '18:30' }), ctx())).toMatchObject({ ok: true, hours: 8, deduction: 0 });
+  });
   it('特休額度不足不能登記', () => {
-    // 2026-03-01 起 15 日 = 120h，已休 14 × 7.5 + 5 + 5 = 115h
+    // 2026-03-01 起 15 日 = 120h，已休 14 天 + 半天 = 116h，剩半天
     const used = Array.from({ length: 14 }, (_, i) => rec(`2026-04-${String(i + 1).padStart(2, '0')}`, 'annual', '09:30', '18:30'));
-    used.push(rec('2026-05-04', 'annual', '13:30', '18:30'), rec('2026-05-05', 'annual', '13:30', '18:30'));
+    used.push(rec('2026-05-04', 'annual', '13:30', '18:30'));
     const r = checkLeave(input({ type: 'annual', start: '09:30', end: '18:30' }), ctx({ leaves: used }));
-    expect(r).toMatchObject({ ok: false, error: '特休剩餘 5 h，不夠扣 7.5 h。' });
-    expect(checkLeave(input({ type: 'annual', start: '13:30', end: '18:30' }), ctx({ leaves: used })).ok).toBe(true);
+    expect(errOf(r)).toBe('特休剩餘 0.5 天，不夠扣 1 天。');
+    // 規則層只回傳訊息代碼與參數，由畫面層翻譯
+    expect(r.ok ? null : { key: r.error.key, args: r.error.args }).toEqual({ key: '特休剩餘 {0} 天，不夠扣 {1} 天。', args: [0.5, 1] });
+    expect(checkLeave(input({ type: 'annual', start: '09:30', end: '12:00' }), ctx({ leaves: used })).ok).toBe(true);
   });
 });
 
@@ -77,7 +87,7 @@ describe('特休遞延', () => {
   it('先扣遞延額度，再扣本期', () => {
     const leaves = [rec('2026-03-10', 'annual', '09:30', '18:30'), rec('2026-03-11', 'annual', '09:30', '18:30')];
     const st = annualStatus(emp(), leaves, [defer], '2026-10-19');
-    expect(st).toMatchObject({ entitled: 120, deferred: 10, used: 15, deferredUsed: 10, currentUsed: 5, deferredRemaining: 0, currentRemaining: 115, remaining: 115 });
+    expect(st).toMatchObject({ entitled: 120, deferred: 10, used: 16, deferredUsed: 10, currentUsed: 6, deferredRemaining: 0, currentRemaining: 114, remaining: 114 });
   });
   it('到期提醒：遞延額度只能換錢、本期可遞延', () => {
     const leaves = [rec('2026-03-10', 'annual', '09:30', '12:00')];
@@ -85,8 +95,8 @@ describe('特休遞延', () => {
     expect(due).toHaveLength(1);
     expect(due[0]).toMatchObject({ reason: 'expiring', daysLeft: 18, actions: ['cash', 'defer', 'zero'] });
     const s = buildSettlement(due[0], 'defer', '2027-02-10');
-    // 遞延的 7.5h 換錢（7.5 × 150），本期剩 120h 遞延
-    expect(s).toMatchObject({ remainingHours: 127.5, amount: 1125, deferredHours: 120, deferredUntil: '2028-02-29', periodEnd: '2027-02-28' });
+    // 遞延 10h 用掉半天（4h），剩 6h 換錢（6 × 150），本期剩 120h 遞延
+    expect(s).toMatchObject({ remainingHours: 126, amount: 900, deferredHours: 120, deferredUntil: '2028-02-29', periodEnd: '2027-02-28' });
   });
   it('離職只能換錢；已處理的不再提醒', () => {
     const e = emp({ leaveDate: '2026-09-30' });

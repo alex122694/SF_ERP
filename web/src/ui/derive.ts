@@ -15,6 +15,14 @@ export const SETTLE_LABEL = { cash: '已換錢', defer: '已遞延', zero: '已�
 
 export const remindDays = (st: State) => Number(st.settings.annual_remind_days) || 30;
 
+/** 手動改放假日／上班日的原因快選清單（設定值為 JSON 陣列） */
+export function dayReasons(st: State): string[] {
+  try {
+    const v = JSON.parse(st.settings.day_reasons ?? '[]');
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '') : [];
+  } catch { return []; }
+}
+
 export const dueList = (st: State, today: string) =>
   settlementsDue(st.employees, st.leaves, st.settlements, today, remindDays(st), st.settings.annual_track_from ?? '');
 

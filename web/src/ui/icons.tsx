@@ -22,7 +22,9 @@ const paths: Record<string, ReactNode> = {
   upload: <path d="M10 13V3M6 7l4-4 4 4M4 16h12" />,
 };
 
-export function Icon({ name, size = 20, stroke = 1.6, style }: { name: keyof typeof paths | string; size?: number; stroke?: number; style?: React.CSSProperties }) {
+export type IconName = keyof typeof paths;
+
+export function Icon({ name, size = 20, stroke = 1.6, style }: { name: IconName; size?: number; stroke?: number; style?: React.CSSProperties }) {
   return (
     <svg aria-hidden="true" width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor"
       strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', ...style }}>

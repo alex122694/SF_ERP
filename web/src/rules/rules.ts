@@ -1,5 +1,6 @@
 // 工時、請假、特休、防呆規則（對應 docs/規格.md 第 3、7、8、9、13 節）
 // 標準版的 Java 規則要跑同一份 shared/rules-cases.json，兩邊結果必須一致
+import { UserError, msg, type Msg } from './msg';
 
 export type Gender = 'M' | 'F';
 
@@ -68,6 +69,13 @@ export const SEGMENTS = [
 ] as const;
 export const isSegment = (start: string, end: string) => SEGMENTS.some((s) => s.start === start && s.end === end);
 
+/** 特休以半天為單位：上午、下午各算半天（4h），全天算 1 天（8h） */
+/** 時數換算成天數（1 天 = 8h），顯示到小數 2 位 */
+export const toDays = (hours: number) => Math.round((hours / HOURS_PER_DAY) * 100) / 100;
+export const HALF_DAY_MINUTES = (HOURS_PER_DAY / 2) * 60;
+export const annualMinutes = (start: string, end: string) =>
+  (start === SEGMENTS[0].start && end === SEGMENTS[0].end ? 2 : 1) * HALF_DAY_MINUTES;
+
 export const LATE_START = '09:30';
 export const LATE_MAX_MIN = 30;
 
@@ -89,7 +97,6 @@ export function leaveMinutes(start: string, end: string): number {
   for (const [ps, pe] of WORK_PERIODS) min += Math.max(0, Math.min(e, toMin(pe)) - Math.max(s, toMin(ps)));
   return min;
 }
-export const leaveHours = (start: string, end: string) => leaveMinutes(start, end) / 60;
 
 const pct = (ratio: number) => Math.round(ratio * 100);
 
@@ -107,7 +114,7 @@ export const hourlyRate = (salary: number) => salary / DAYS_PER_MONTH / HOURS_PE
 // ---------- 假別 ----------
 
 export const DEFAULT_LEAVE_TYPES: LeaveType[] = [
-  { code: 'annual', name: '特休', payRatio: 1, unitMinutes: 150, segmentOnly: true, femaleOnly: false, maxMinutes: null, confirmTwice: true, color: 'annual', sortOrder: 1 },
+  { code: 'annual', name: '特休', payRatio: 1, unitMinutes: 240, segmentOnly: true, femaleOnly: false, maxMinutes: null, confirmTwice: true, color: 'annual', sortOrder: 1 },
   { code: 'personal', name: '事假', payRatio: 0, unitMinutes: 30, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: true, color: 'personal', sortOrder: 2 },
   { code: 'sick', name: '病假', payRatio: 0.5, unitMinutes: 30, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: false, color: 'sick', sortOrder: 3 },
   { code: 'menstrual', name: '生理假', payRatio: 0.5, unitMinutes: 30, segmentOnly: false, femaleOnly: true, maxMinutes: null, confirmTwice: false, color: 'menstrual', sortOrder: 4 },
@@ -116,21 +123,22 @@ export const DEFAULT_LEAVE_TYPES: LeaveType[] = [
 ];
 
 export const LEAVE_TYPE_NOTES: Record<string, string> = {
-  annual: '只能選上午／下午／全天；剩餘額度不足不能登記',
+  annual: '以半天為單位：上午、下午各算半天（4 h），全天算 1 天（8 h）；剩餘額度不足不能登記',
   personal: '沒有請假的缺勤，以事假登記',
   menstrual: '限女性',
   late: '09:30 起算，最多 30 分鐘；超過以事假登記',
 };
 
-export function unitText(t: LeaveType): string {
-  if (t.segmentOnly) return '上午／下午／全天';
-  return `${t.unitMinutes} 分鐘`;
+export function unitText(t: LeaveType): Msg {
+  if (t.code === 'annual') return msg('半天（上午／下午）');
+  if (t.segmentOnly) return msg('上午／下午／全天');
+  return msg('{0} 分鐘', [t.unitMinutes]);
 }
 
-export function payText(ratio: number): string {
-  if (ratio === 1) return '全薪';
-  if (ratio === 0) return '不支薪';
-  return `${pct(ratio)}% 給薪`;
+export function payText(ratio: number): Msg {
+  if (ratio === 1) return msg('全薪');
+  if (ratio === 0) return msg('不支薪');
+  return msg('{0}% 給薪', [pct(ratio)]);
 }
 
 // ---------- 日期（一律用 'YYYY-MM-DD' 字串，避免時區問題） ----------
@@ -146,7 +154,8 @@ export const weekday = (s: string) => {
   const [y, m, d] = s.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 };
-export const WEEKDAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
+/** 「還沒選」的提示（畫面用來和真正的錯誤區分） */
+export const LEAVE_HINT = { emp: msg('請選擇員工'), type: msg('請選擇假別') };
 
 export function addDays(s: string, n: number): string {
   const [y, m, d] = s.split('-').map(Number);
@@ -178,9 +187,9 @@ export function fullMonths(from: string, asOf: string): number {
   return k;
 }
 
-export function seniorityText(from: string, asOf: string): string {
+export function seniorityText(from: string, asOf: string): Msg {
   const k = fullMonths(from, asOf);
-  return `${Math.floor(k / 12)} 年 ${k % 12} 個月`;
+  return msg('{0} 年 {1} 個月', [Math.floor(k / 12), k % 12]);
 }
 
 export const isEmployedOn = (emp: Pick<Employee, 'hireDate' | 'leaveDate'>, date: string) =>
@@ -269,6 +278,13 @@ export interface Calendars {
   isHoliday(date: string): boolean | undefined;
 }
 
+/** 一筆紀錄算出的分鐘數：遲到從 09:30 起算、特休以半天為單位、其他依上班時段重疊；起訖須為 HH:MM */
+export function recordMinutes(type: string, start: string, end: string): number {
+  if (type === 'late') return Math.max(0, toMin(end) - toMin(LATE_START));
+  if (type === 'annual' && isSegment(start, end)) return annualMinutes(start, end);
+  return leaveMinutes(start, end);
+}
+
 export interface LeaveInput {
   employeeId: number | null;
   date: string;
@@ -288,7 +304,7 @@ export interface LeaveContext {
 
 export type LeaveCheck =
   | { ok: true; minutes: number; hours: number; deduction: number; annual: AnnualStatus | null }
-  | { ok: false; error: string; minutes: number; hours: number; deduction: number; annual: AnnualStatus | null };
+  | { ok: false; error: Msg; minutes: number; hours: number; deduction: number; annual: AnnualStatus | null };
 
 /** 存檔前檢查；同一函式也給畫面即時試算用。existing 為編輯中的那一筆（原本的 id 與日期） */
 export function checkLeave(input: LeaveInput, ctx: LeaveContext, existing?: { id: number; date: string }): LeaveCheck {
@@ -296,44 +312,44 @@ export function checkLeave(input: LeaveInput, ctx: LeaveContext, existing?: { id
   const emp = ctx.employees.find((e) => e.id === input.employeeId);
   const t = ctx.leaveTypes.find((x) => x.code === input.type);
   const timesOk = isTimeStr(input.start) && isTimeStr(input.end);
-  const minutes = timesOk && t ? (t.code === 'late' ? Math.max(0, toMin(input.end) - toMin(LATE_START)) : leaveMinutes(input.start, input.end)) : 0;
+  const minutes = !timesOk || !t ? 0 : recordMinutes(t.code, input.start, input.end);
   const hours = minutes / 60;
   const ded = emp && t ? deduction(minutes, emp.salary, t.payRatio) : 0;
   const annual = emp && t?.code === 'annual' && isDateStr(input.date) ? annualStatus(emp, ctx.leaves, ctx.settlements, input.date, existingId) : null;
-  const fail = (error: string): LeaveCheck => ({ ok: false, error, minutes, hours, deduction: ded, annual });
+  const fail = (error: Msg): LeaveCheck => ({ ok: false, error, minutes, hours, deduction: ded, annual });
 
-  if (!isDateStr(input.date)) return fail('日期不正確');
+  if (!isDateStr(input.date)) return fail(msg('日期不正確'));
   const holiday = ctx.calendars.isHoliday(input.date);
-  if (holiday === undefined) return fail(`請先匯入 ${input.date.slice(0, 4)} 年行事曆`);
-  if (holiday && existing?.date !== input.date) return fail('這天是放假日，不能登記。要改成上班日請到出缺勤月曆。');
-  if (!emp) return fail('請選擇員工');
-  if (!isEmployedOn(emp, input.date)) return fail(`${emp.name} 在 ${input.date} 不在職`);
-  if (!t) return fail('請選擇假別');
-  if (t.femaleOnly && emp.gender !== 'F') return fail(`${t.name}只有女性可以選`);
-  if (!timesOk) return fail('請選擇起訖時間');
+  if (holiday === undefined) return fail(msg('請先匯入 {0} 年行事曆', [input.date.slice(0, 4)]));
+  if (holiday && existing?.date !== input.date) return fail(msg('這天是放假日，不能登記。要改成上班日請到出缺勤月曆。'));
+  if (!emp) return fail(LEAVE_HINT.emp);
+  if (!isEmployedOn(emp, input.date)) return fail(msg('{0} 在 {1} 不在職', [emp.name, input.date]));
+  if (!t) return fail(LEAVE_HINT.type);
+  if (t.femaleOnly && emp.gender !== 'F') return fail(msg('{0}只有女性可以選', [msg(t.name)]));
+  if (!timesOk) return fail(msg('請選擇起訖時間'));
   if (t.code === 'late') {
-    if (input.start !== LATE_START) return fail(`遲到從 ${LATE_START} 起算`);
-    if (minutes < 1 || minutes > LATE_MAX_MIN) return fail('遲到只能 1～30 分鐘；超過 30 分鐘請改用事假登記。');
+    if (input.start !== LATE_START) return fail(msg('遲到從 {0} 起算', [LATE_START]));
+    if (minutes < 1 || minutes > LATE_MAX_MIN) return fail(msg('遲到只能 1～30 分鐘；超過 30 分鐘請改用事假登記。'));
   } else {
-    if (!TIME_SLOTS.includes(input.start) || !TIME_SLOTS.includes(input.end)) return fail('起訖時間須對齊 30 分鐘');
-    if (toMin(input.start) >= toMin(input.end)) return fail('訖時間須晚於起時間');
-    if (t.segmentOnly && !isSegment(input.start, input.end)) return fail(`${t.name}只能選全天、上午或下午`);
+    if (!TIME_SLOTS.includes(input.start) || !TIME_SLOTS.includes(input.end)) return fail(msg('起訖時間須對齊 30 分鐘'));
+    if (toMin(input.start) >= toMin(input.end)) return fail(msg('訖時間須晚於起時間'));
+    if (t.segmentOnly && !isSegment(input.start, input.end)) return fail(msg('{0}只能選全天、上午或下午', [msg(t.name)]));
   }
-  if (minutes <= 0) return fail('時數為 0，請調整起訖時間。');
+  if (minutes <= 0) return fail(msg('時數為 0，請調整起訖時間。'));
 
   const clash = ctx.leaves.find((o) => o.employeeId === emp.id && o.date === input.date && o.id !== existingId
     && toMin(input.start) < toMin(o.end) && toMin(o.start) < toMin(input.end));
   if (clash) {
     const ct = ctx.leaveTypes.find((x) => x.code === clash.type);
-    return fail(`${emp.name} 當天 ${clash.start}～${clash.end} 已有${ct?.name ?? '紀錄'}，時段重疊`);
+    return fail(msg('{0} 當天 {1}～{2} 已有{3}，時段重疊', [emp.name, clash.start, clash.end, ct ? msg(ct.name) : msg('紀錄')]));
   }
   if (annual) {
-    if (!annual.period) return fail(`${emp.name} 在 ${input.date} 年資未滿 6 個月，沒有特休`);
+    if (!annual.period) return fail(msg('{0} 在 {1} 年資未滿 6 個月，沒有特休', [emp.name, input.date]));
     const p = annual.period;
     if (ctx.settlements.some((s) => s.employeeId === emp.id && s.periodStart === p.start)) {
-      return fail(`${emp.name} ${p.start}～${p.last} 的特休已結清，不能再登記`);
+      return fail(msg('{0} {1}～{2} 的特休已結清，不能再登記', [emp.name, p.start, p.last]));
     }
-    if (hours > annual.remaining) return fail(`特休剩餘 ${annual.remaining} h，不夠扣 ${hours} h。`);
+    if (hours > annual.remaining) return fail(msg('特休剩餘 {0} 天，不夠扣 {1} 天。', [toDays(annual.remaining), toDays(hours)]));
   }
   return { ok: true, minutes, hours, deduction: ded, annual };
 }
@@ -352,7 +368,7 @@ export interface EmployeeInput {
 /** 回傳整理過的員工資料，或錯誤訊息 */
 export function checkEmployee(
   input: EmployeeInput, leaves: LeaveRecord[], existingId?: number,
-): { ok: true; value: Omit<Employee, 'id'> } | { ok: false; error: string } {
+): { ok: true; value: Omit<Employee, 'id'> } | { ok: false; error: Msg } {
   const e = {
     name: String(input.name ?? '').trim(),
     gender: input.gender as Gender,
@@ -363,20 +379,20 @@ export function checkEmployee(
     email: String(input.email ?? '').trim(),
     phone: String(input.phone ?? '').trim(),
   };
-  const bad = (error: string) => ({ ok: false as const, error });
-  if (!e.name) return bad('請填寫姓名');
-  if (e.gender !== 'M' && e.gender !== 'F') return bad('請選擇性別');
-  if (!Number.isInteger(e.salary) || e.salary <= 0) return bad('薪資須為正整數');
-  if (!isDateStr(e.hireDate)) return bad('請填寫正確的到職日');
-  if (!isDateStr(e.annualBaseDate)) return bad('特休年資起算日格式不正確');
-  if (e.leaveDate && !isDateStr(e.leaveDate)) return bad('離職日格式不正確');
-  if (e.leaveDate && e.leaveDate <= e.hireDate) return bad('離職日須晚於到職日');
-  if (e.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.email)) return bad('信箱格式不正確');
+  const bad = (error: Msg) => ({ ok: false as const, error });
+  if (!e.name) return bad(msg('請填寫姓名'));
+  if (e.gender !== 'M' && e.gender !== 'F') return bad(msg('請選擇性別'));
+  if (!Number.isInteger(e.salary) || e.salary <= 0) return bad(msg('薪資須為正整數'));
+  if (!isDateStr(e.hireDate)) return bad(msg('請填寫正確的到職日'));
+  if (!isDateStr(e.annualBaseDate)) return bad(msg('特休年資起算日格式不正確'));
+  if (e.leaveDate && !isDateStr(e.leaveDate)) return bad(msg('離職日格式不正確'));
+  if (e.leaveDate && e.leaveDate <= e.hireDate) return bad(msg('離職日須晚於到職日'));
+  if (e.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.email)) return bad(msg('信箱格式不正確'));
   if (existingId != null) {
     const mine = leaves.filter((l) => l.employeeId === existingId);
     const outside = mine.filter((l) => !isEmployedOn(e, l.date)).sort((a, b) => a.date.localeCompare(b.date));
-    if (outside.length) return bad(`有 ${outside.length} 筆紀錄不在到職～離職期間內（最早 ${outside[0].date}），請先調整紀錄`);
-    if (e.gender === 'M' && mine.some((l) => l.type === 'menstrual')) return bad('此員工已有生理假紀錄，不能改為男性');
+    if (outside.length) return bad(msg('有 {0} 筆紀錄不在到職～離職期間內（最早 {1}），請先調整紀錄', [outside.length, outside[0].date]));
+    if (e.gender === 'M' && mine.some((l) => l.type === 'menstrual')) return bad(msg('此員工已有生理假紀錄，不能改為男性'));
   }
   return { ok: true, value: e };
 }
@@ -432,7 +448,7 @@ export function settlementsDue(
 
 /** 依處理方式算出要存的紀錄：遞延額度一律換錢，只有本期剩餘可以遞延或歸零 */
 export function buildSettlement(due: SettlementDue, action: SettlementAction, decidedAt: string): Omit<Settlement, 'id'> {
-  if (!due.actions.includes(action)) throw new Error('這筆特休只能換錢');
+  if (!due.actions.includes(action)) throw new UserError(msg('這筆特休只能換錢'));
   const { status, employee, period } = due;
   const cashHours = action === 'cash' ? status.remaining : status.deferredRemaining;
   const deferredHours = action === 'defer' ? status.currentRemaining : 0;

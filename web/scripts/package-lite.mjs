@@ -1,4 +1,5 @@
-// 打包輕量版：release/SF ERP-lite.zip（index.html、data/、使用說明.txt）
+// lite 發佈：預設只更新解壓縮後的資料夾 release/SF ERP-lite/SF ERP/（index.html、data/、使用說明.txt）；
+// 加 --zip 才另外打包成 release/SF ERP-lite.zip。資料夾裡的 data/ 只建立、不清空，不會動到裡面的資料檔
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -8,7 +9,7 @@ const WEB = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT_DIR = path.join(WEB, '..', 'release');
 const ROOT = 'SF ERP';
 
-const README = `SF ERP（輕量版）使用說明
+const README = `SF ERP（lite）使用說明
 ====================================
 
 1. 把整個 SF ERP 資料夾放在固定位置（例如 D:\\SF ERP）。
@@ -68,12 +69,22 @@ function zip(entries) {
 const html = fs.readFileSync(path.join(WEB, 'dist', 'index.html'));
 if (/<script[^>]+src=/.test(html.toString('utf8'))) throw new Error('index.html 仍引用外部 script，file:// 開啟會失敗');
 
-fs.mkdirSync(OUT_DIR, { recursive: true });
-const out = path.join(OUT_DIR, 'SF ERP-lite.zip');
-fs.writeFileSync(out, zip([
-  { name: `${ROOT}/`, data: Buffer.alloc(0) },
-  { name: `${ROOT}/index.html`, data: html },
-  { name: `${ROOT}/data/`, data: Buffer.alloc(0) },
-  { name: `${ROOT}/使用說明.txt`, data: Buffer.from('\uFEFF' + README.replaceAll('\n', '\r\n'), 'utf8') },
-]));
-console.log(`已輸出 ${path.relative(path.join(WEB, '..'), out)}（${(fs.statSync(out).size / 1024).toFixed(0)} KB）`);
+const readme = Buffer.from('\uFEFF' + README.replaceAll('\n', '\r\n'), 'utf8');
+const rel = (p) => path.relative(path.join(WEB, '..'), p);
+
+const dir = path.join(OUT_DIR, 'SF ERP-lite', ROOT);
+fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
+fs.writeFileSync(path.join(dir, 'index.html'), html);
+fs.writeFileSync(path.join(dir, '使用說明.txt'), readme);
+console.log(`已更新 ${rel(dir)}${path.sep}（index.html ${(html.length / 1024).toFixed(0)} KB）`);
+
+if (process.argv.includes('--zip')) {
+  const out = path.join(OUT_DIR, 'SF ERP-lite.zip');
+  fs.writeFileSync(out, zip([
+    { name: `${ROOT}/`, data: Buffer.alloc(0) },
+    { name: `${ROOT}/index.html`, data: html },
+    { name: `${ROOT}/data/`, data: Buffer.alloc(0) },
+    { name: `${ROOT}/使用說明.txt`, data: readme },
+  ]));
+  console.log(`已輸出 ${rel(out)}（${(fs.statSync(out).size / 1024).toFixed(0)} KB）`);
+}

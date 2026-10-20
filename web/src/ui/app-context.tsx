@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { UserError, calendarsOf, localDate, type State } from '../data/db';
 import type { DataSource, LiteSource } from '../data/source';
 import type { Calendars } from '../rules/rules';
+import { errorText, msgText, t } from '../i18n';
 
 export interface Route {
   page: string;
@@ -73,8 +74,8 @@ export function AppProvider({ src, children }: { src: DataSource; children: Reac
       if (okMsg) toast(okMsg);
       return r;
     } catch (e) {
-      if (e instanceof UserError) toast(e.message, true);
-      else { console.error(e); toast(`發生錯誤：${(e as Error).message ?? e}`, true); }
+      if (e instanceof UserError) toast(msgText(e.msg), true);
+      else { console.error(e); toast(t('發生錯誤：{0}', [errorText(e)]), true); }
       return undefined;
     }
   }, [toast]);
@@ -94,7 +95,7 @@ export function AppProvider({ src, children }: { src: DataSource; children: Reac
             <h2>{pending.title}</h2>
             {pending.body && <div className="muted">{pending.body}</div>}
             <div className="dlg-actions">
-              <button type="button" className="btn" onClick={() => close(false)}>取消</button>
+              <button type="button" className="btn" onClick={() => close(false)}>{t('取消')}</button>
               <button type="button" className={pending.danger ? 'btn primary danger-fill' : 'btn primary'} onClick={() => close(true)}
                 style={pending.danger ? { background: 'var(--danger)', borderColor: 'var(--danger)', color: '#fff' } : undefined}>{pending.ok}</button>
             </div>
