@@ -30,7 +30,7 @@ export function QuickPage() {
       <div className="page-head" style={{ alignItems: 'flex-end' }}>
         <div className="title" style={{ flex: '1 1 360px', gap: 6 }}>
           <h1 style={{ fontSize: 34 }}>{t('快速登記')}</h1>
-          <span className="muted" style={{ fontSize: 15 }}>{t('一張假單登記一天。選好員工與假別，時數和扣款會自動算好。')}</span>
+          <span className="muted" style={{ fontSize: 15 }}>{t('一張假單可登記一天，或選起始日與結束日一次登記多天。選好員工與假別，時數和扣款會自動算好。')}</span>
         </div>
         <span className="tag ok num">{t('這次已登記 {0} 筆', [count])}</span>
         <button type="button" className="btn" onClick={() => go('#/attendance')}><Icon name="calendar" size={18} />{t('出缺勤月曆')}</button>
@@ -38,8 +38,8 @@ export function QuickPage() {
       <section className="card quick-card" aria-label={t('假單')} style={{ padding: 32 }}>
         <LeaveForm key={`${date}-${emp}`} variant="page" initial={{ date: date && isDateStr(date) ? date : undefined, employeeId: emp }}
           showDone={!jump} footerEnd={jumpSwitch}
-          onSaved={(_, f) => {
-            setCount((n) => n + 1);
+          onSaved={(_, f, n) => {
+            setCount((c) => c + n);
             if (jump) { toast(t('已登記')); go(`#/attendance?ym=${f.date.slice(0, 7)}&sel=${f.date}`); }
           }} />
       </section>

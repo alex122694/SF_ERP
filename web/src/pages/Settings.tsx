@@ -62,6 +62,7 @@ export function SettingsPage() {
           <div className="kvrow"><span className="muted">{t('午休')}</span><b className="num">{st.settings.lunch_start}～{st.settings.lunch_end}</b></div>
           <div className="kvrow"><span className="muted">{t('上午／下午／全天')}</span><b className="num">{t('2.5 h／5 h／7.5 h')}</b></div>
           <div className="kvrow"><span className="muted">{t('日數換算')}</span><b>{t('1 日 = {0} h', [st.settings.hours_per_day])}</b></div>
+          <div className="kvrow"><span className="muted">{t('月結區間')}</span><b>{t('上月 23 日 ～ 本月 22 日')}</b></div>
           <div className="kvrow"><span className="muted">{t('時薪')}</span><b>{t('本薪 ÷ 30 ÷ 8')}</b></div>
           <div style={{ marginTop: 8, padding: 14, borderRadius: 12, background: 'var(--raised)', fontSize: 13 }}>
             <b>{t('扣除金額 = 時數 × 時薪 × (1 − 給薪比例)')}</b><br />

@@ -178,6 +178,25 @@ export function addMonths(s: string, n: number): string {
   return ymd(ny, nm, Math.min(d, daysInMonth(ny, nm)));
 }
 
+// ---------- 月結區間：結算日每月 22 日，「N 月」= 上月 23 日 ~ N 月 22 日 ----------
+
+export const SETTLE_DAY = 22;
+
+/** 月結區間；month 為 0 時是全年（前一年 12/23 ~ 當年 12/22） */
+export function settlementRange(year: number, month: number): { from: string; to: string } {
+  if (month === 0) return { from: ymd(year - 1, 12, SETTLE_DAY + 1), to: ymd(year, 12, SETTLE_DAY) };
+  const prev = addMonths(ymd(year, month, 1), -1);
+  const [py, pm] = prev.split('-').map(Number);
+  return { from: ymd(py, pm, SETTLE_DAY + 1), to: ymd(year, month, SETTLE_DAY) };
+}
+
+/** 某天落在哪一個月結區間（23 日起算入下個月） */
+export function settlementMonthOf(date: string): { year: number; month: number } {
+  const [y, m, d] = date.split('-').map(Number);
+  if (d <= SETTLE_DAY) return { year: y, month: m };
+  return m === 12 ? { year: y + 1, month: 1 } : { year: y, month: m + 1 };
+}
+
 /** from 到 asOf 滿幾個月 */
 export function fullMonths(from: string, asOf: string): number {
   if (asOf < from) return 0;
@@ -359,6 +378,52 @@ export function checkLeave(
     if (hours > annual.remaining) return fail(msg('特休剩餘 {0} 天，不夠扣 {1} 天。', [toDays(annual.remaining), toDays(hours)]));
   }
   return { ok: true, minutes, hours, deduction: ded, salary, annual };
+}
+
+// ---------- 多日請假：起訖日之間每個上班日各存一筆 ----------
+
+export const MAX_RANGE_DAYS = 92;
+
+/**
+ * 把「起日～訖日」展開成逐日的假單：放假日略過；第一個上班日用 first、最後一個上班日用 last，中間的上班日一律全天。
+ * 只有一個上班日時用 first。日期不正確或區間太長時回傳 error。
+ */
+export function expandLeaveRange(
+  base: LeaveInput, endDate: string, last: { start: string; end: string }, cal: Calendars,
+): { days: LeaveInput[]; skipped: string[]; error?: Msg } {
+  if (!isDateStr(base.date) || !isDateStr(endDate)) return { days: [], skipped: [], error: msg('日期不正確') };
+  if (endDate < base.date) return { days: [], skipped: [], error: msg('結束日不能早於起始日') };
+  if (daysBetween(base.date, endDate) + 1 > MAX_RANGE_DAYS) return { days: [], skipped: [], error: msg('一次最多登記 {0} 天', [MAX_RANGE_DAYS]) };
+  const days: LeaveInput[] = [];
+  const skipped: string[] = [];
+  for (let d = base.date; d <= endDate; d = addDays(d, 1)) {
+    if (cal.isHoliday(d) === true) skipped.push(d); else days.push({ ...base, date: d });
+  }
+  days.forEach((x, i) => {
+    const seg = i === 0 ? base : i === days.length - 1 ? last : SEGMENTS[0];
+    x.start = seg.start;
+    x.end = seg.end;
+  });
+  return { days, skipped };
+}
+
+/** 逐日檢查，前面幾天算進去再檢查後面幾天（特休額度、時段重疊都會累計）；回傳第一個錯誤與合計 */
+export function checkLeaveDays(
+  days: LeaveInput[], ctx: LeaveContext,
+): { ok: true; hours: number; minutes: number; deduction: number; annual: AnnualStatus | null }
+  | { ok: false; date: string; error: Msg; hours: number; minutes: number; deduction: number; annual: AnnualStatus | null } {
+  let leaves = ctx.leaves;
+  let hours = 0, minutes = 0, deduction = 0;
+  let annual: AnnualStatus | null = null;
+  let seq = -1;
+  for (const day of days) {
+    const r = checkLeave(day, { ...ctx, leaves });
+    if (!r.ok) return { ok: false, date: day.date, error: r.error, hours, minutes, deduction, annual };
+    hours += r.hours; minutes += r.minutes; deduction += r.deduction;
+    annual = annual ?? r.annual;
+    leaves = [...leaves, { id: seq--, employeeId: day.employeeId!, date: day.date, type: day.type, start: day.start, end: day.end, hours: r.hours, deduction: r.deduction, salary: r.salary, reason: '' }];
+  }
+  return { ok: true, hours, minutes, deduction, annual };
 }
 
 export interface EmployeeInput {

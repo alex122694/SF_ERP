@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import cases from '../../shared/rules-cases.json';
 import {
   DEFAULT_LEAVE_TYPES, annualDaysForYears, annualMinutes, annualPeriod, annualStatus, buildSettlement, cashOut, checkLeave,
-  checkEmployee, deduction, leaveMinutes, seniorityText, settlementsDue,
+  checkEmployee, deduction, leaveMinutes, seniorityText, settlementMonthOf, settlementRange, settlementsDue,
   type Employee, type LeaveCheck, type LeaveContext, type LeaveRecord, type Settlement,
 } from '../src/rules/rules';
 
@@ -39,6 +39,21 @@ const input = (over: Partial<Parameters<typeof checkLeave>[0]> = {}) => ({
 
 /** 錯誤訊息的中文全文 */
 const errOf = (r: LeaveCheck) => (r.ok ? null : String(r.error));
+
+describe('月結區間（上月 23 日 ~ 本月 22 日）', () => {
+  it('N 月 = 上月 23 日 ~ N 月 22 日，1 月跨年，全年 = 前一年 12/23 ~ 當年 12/22', () => {
+    expect(settlementRange(2026, 10)).toEqual({ from: '2026-09-23', to: '2026-10-22' });
+    expect(settlementRange(2026, 1)).toEqual({ from: '2025-12-23', to: '2026-01-22' });
+    expect(settlementRange(2026, 3)).toEqual({ from: '2026-02-23', to: '2026-03-22' });
+    expect(settlementRange(2026, 0)).toEqual({ from: '2025-12-23', to: '2026-12-22' });
+  });
+  it('22 日算本月、23 日起算下個月', () => {
+    expect(settlementMonthOf('2026-10-22')).toEqual({ year: 2026, month: 10 });
+    expect(settlementMonthOf('2026-10-23')).toEqual({ year: 2026, month: 11 });
+    expect(settlementMonthOf('2026-12-23')).toEqual({ year: 2027, month: 1 });
+    expect(settlementMonthOf('2026-01-01')).toEqual({ year: 2026, month: 1 });
+  });
+});
 
 describe('checkLeave', () => {
   it('算出時數與扣款', () => {

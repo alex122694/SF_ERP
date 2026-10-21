@@ -16,6 +16,7 @@ export interface DataSource {
   saveEmployee(input: EmployeeInput, id?: number): Promise<number>;
   deleteEmployee(id: number): Promise<void>;
   saveLeave(input: LeaveInput, id?: number): Promise<number>;
+  saveLeaves(inputs: LeaveInput[]): Promise<number[]>;
   deleteLeave(id: number): Promise<void>;
   importCalendar(file: File): Promise<{ year: number; holidays: number; keptOverrides: number }>;
   setDay(date: string, holiday: boolean, reason?: string): Promise<void>;
@@ -132,6 +133,7 @@ export class LiteSource implements DataSource {
   saveEmployee(input: EmployeeInput, id?: number) { return this.mutate((db) => db.saveEmployee(input, id)); }
   deleteEmployee(id: number) { return this.mutate((db) => db.deleteEmployee(id)); }
   saveLeave(input: LeaveInput, id?: number) { return this.mutate((db) => db.saveLeave(input, id)); }
+  saveLeaves(inputs: LeaveInput[]) { return this.mutate((db) => db.saveLeaves(inputs)); }
   deleteLeave(id: number) { return this.mutate((db) => db.deleteLeave(id)); }
   setDay(date: string, holiday: boolean, reason?: string) { return this.mutate((db) => db.setDay(date, holiday, reason)); }
   resetDay(date: string) { return this.mutate((db) => db.resetDay(date)); }

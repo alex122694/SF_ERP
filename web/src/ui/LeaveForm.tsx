@@ -6,15 +6,17 @@ import { Annual, AnnualNum, AnnualUnit } from './annual-unit';
 import { fmtHours, mdText, money, ntd, typeName } from './format';
 import { msgText, t, tr } from '../i18n';
 import {
-  LATE_START, LEAVE_HINT, SEGMENTS, TIME_SLOTS, checkLeave, hourlyRate, isDateStr, isEmployedOn, payText,
-  type LeaveInput, type LeaveRecord,
+  LATE_START, LEAVE_HINT, SEGMENTS, TIME_SLOTS, checkLeave, checkLeaveDays, expandLeaveRange, hourlyRate, isDateStr, isEmployedOn, payText,
+  type LeaveCheck, type LeaveInput, type LeaveRecord,
 } from '../rules/rules';
+import { msg } from '../rules/msg';
 
 interface Props {
   variant: 'page' | 'dialog';
   initial?: Partial<LeaveInput>;
   existing?: LeaveRecord;
-  onSaved?: (id: number, input: LeaveInput) => void;
+  /** count：這次一共登記幾筆（多日請假時大於 1） */
+  onSaved?: (id: number, input: LeaveInput, count: number) => void;
   onCancel?: () => void;
   /** 快速登記頁：送出後是否顯示「送出成功」畫面（false 時由 onSaved 自行跳頁） */
   showDone?: boolean;
@@ -33,6 +35,10 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
     end: existing?.end ?? initial?.end ?? (initial?.type === 'late' ? '09:45' : '18:30'),
     reason: existing?.reason ?? initial?.reason ?? '',
   }));
+  // 結束日（只有快速登記頁的新增假單可以設定）：晚於 date 時，起訖日之間每個上班日各登記一筆
+  const [endDate, setEndDate] = useState(() => existing?.date ?? initial?.date ?? today);
+  const [last, setLast] = useState({ start: '09:30', end: '18:30' });
+  const [saved, setSaved] = useState<{ n: number; skipped: number; amount: ReactNode; time: string; date: string } | null>(null);
   const [step, setStep] = useState<'form' | 'confirm' | 'done'>('form');
   const [busy, setBusy] = useState(false);
   const set = (patch: Partial<LeaveInput>) => setF((o) => ({ ...o, ...patch }));
@@ -45,16 +51,34 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
   const emps = useMemo(() => st.employees.filter((e) => e.id === existing?.employeeId || (isDateStr(f.date) && isEmployedOn(e, f.date))), [st.employees, f.date, existing]);
   const types = st.leaveTypes.filter((x) => !(x.femaleOnly && emp && emp.gender !== 'F'));
 
-  const check = checkLeave(f, { ...st, calendars: cal }, existing);
+  const ctx = { ...st, calendars: cal };
+  const canRange = variant === 'page' && !existing && !isLate;
+  const isRange = canRange && !!endDate && endDate !== f.date;
+  const exp = isRange ? expandLeaveRange(f, endDate, last, cal) : null;
+  const days = exp?.days ?? [];
+  const batch = exp && !exp.error && days.length ? checkLeaveDays(days, ctx) : null;
+  const errDate = batch && !batch.ok ? batch.date : '';
+  let check: LeaveCheck;
+  if (!exp) check = checkLeave(f, ctx, existing);
+  else {
+    const none = { minutes: 0, hours: 0, deduction: 0, salary: emp?.salary ?? 0, annual: null };
+    if (exp.error) check = { ok: false, error: exp.error, ...none };
+    else if (!batch) check = { ok: false, error: msg('這段期間都是放假日，沒有可登記的上班日。'), ...none };
+    else check = { ...batch, salary: emp?.salary ?? 0 } as LeaveCheck;
+  }
   // 還沒選員工或假別只是提示；放假日、額度不足等才用紅色錯誤
   const hint = !check.ok && (check.error === LEAVE_HINT.emp || check.error === LEAVE_HINT.type) ? msgText(check.error) : '';
-  const problem = check.ok || hint ? '' : msgText(check.error);
+  const problem = check.ok || hint ? '' : errDate ? t('{0}：{1}', [errDate, msgText(check.error)]) : msgText(check.error);
   const segName = SEGMENTS.find((s) => s.start === f.start && s.end === f.end)?.name;
-  const timeText = `${f.start}–${f.end}`;
+  const rangeTime = (d: LeaveInput[]) => d.length < 2 ? `${d[0]?.start}–${d[0]?.end}`
+    : t(d.length === 2 ? '首日 {0}／末日 {1}' : '首日 {0}／末日 {1}／中間全天', [`${d[0].start}–${d[0].end}`, `${d[d.length - 1].start}–${d[d.length - 1].end}`]);
+  const timeText = exp && days.length ? rangeTime(days) : `${f.start}–${f.end}`;
+  const dateText = exp && days.length > 1 ? t('{0} ～ {1}', [mdText(days[0].date), mdText(days[days.length - 1].date)]) : mdText(exp && days.length ? days[0].date : f.date);
   const amountText = isLate ? t('{0} 分', [check.minutes]) : f.type === 'annual' ? <Annual h={check.hours} /> : `${fmtHours(check.hours)} h`;
   const annualAfter = check.annual ? check.annual.remaining - check.hours : 0;
 
   const pickType = (code: string) => {
+    if (st.leaveTypes.find((x) => x.code === code)?.segmentOnly && !SEGMENTS.some((s) => s.start === last.start && s.end === last.end)) setLast({ start: '09:30', end: '18:30' });
     if (code === 'late') set({ type: code, start: LATE_START, end: f.type === 'late' ? f.end : '09:45' });
     else if (f.type === 'late' || (st.leaveTypes.find((x) => x.code === code)?.segmentOnly && !segName)) set({ type: code, start: '09:30', end: '18:30' });
     else set({ type: code });
@@ -65,17 +89,53 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
     set({ employeeId: id, type: n && n.gender !== 'F' && type?.femaleOnly ? '' : f.type });
   };
 
+  const picker = (label: string, v: { start: string; end: string }, change: (p: { start?: string; end?: string }) => void) => {
+    const sn = SEGMENTS.find((s) => s.start === v.start && s.end === v.end)?.name;
+    return (
+      <div className="stack" style={{ gap: 12 }}>
+        <div className="field">{label}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {SEGMENTS.map((s) => (
+              <button key={s.name} type="button" className={sn === s.name ? 'btn sm on' : 'btn sm'} aria-pressed={sn === s.name}
+                onClick={() => change({ start: s.start, end: s.end })}>{t(s.name)}</button>
+            ))}
+          </div>
+        </div>
+        {!isSegOnly && (
+          <div className="form-grid">
+            <label className="field">{t('起')}
+              <select className="input lg" value={v.start} onChange={(e) => change({ start: e.target.value })}>
+                {TIME_SLOTS.slice(0, -1).map((x) => <option key={x}>{x}</option>)}
+              </select>
+            </label>
+            <label className="field">{t('訖')}
+              <select className="input lg" value={v.end} onChange={(e) => change({ end: e.target.value })}>
+                {TIME_SLOTS.slice(1).map((x) => <option key={x}>{x}</option>)}
+              </select>
+            </label>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const save = async () => {
     setBusy(true);
-    const id = await run(() => src.saveLeave(f, existing?.id), variant === 'dialog' ? t('已儲存') : undefined);
+    const snapshot = { n: exp ? days.length : 1, skipped: exp?.skipped.length ?? 0, amount: amountText, time: timeText, date: dateText };
+    const id = exp
+      ? (await run(() => src.saveLeaves(days)))?.[0]
+      : await run(() => src.saveLeave(f, existing?.id), variant === 'dialog' ? t('已儲存') : undefined);
     setBusy(false);
     if (id == null) { setStep('form'); return; }
-    if (variant === 'page' && showDone) setStep('done');
-    onSaved?.(id, f);
+    if (variant === 'page' && showDone) { setSaved(snapshot); setStep('done'); }
+    onSaved?.(id, f, snapshot.n);
   };
   const submit = () => (type?.confirmTwice ? setStep('confirm') : save());
   const again = () => {
     setF({ employeeId: null, date: f.date, type: '', start: '09:30', end: '18:30', reason: '' });
+    setEndDate(f.date);
+    setLast({ start: '09:30', end: '18:30' });
+    setSaved(null);
     setStep('form');
   };
   // 快速登記頁的按鈕列：按鈕置中於整張卡片，footerEnd 靠右
@@ -91,7 +151,8 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
         </div>
         <div className="stack" style={{ gap: 6 }}>
           <h2 style={{ fontSize: 24 }}>{t('送出成功')}</h2>
-          <span className="muted num" style={{ fontSize: 15 }}>{emp?.name} · {typeName(type)} · {mdText(f.date)} {timeText} · {amountText}</span>
+          <span className="muted num" style={{ fontSize: 15 }}>{emp?.name} · {typeName(type)} · {saved?.date ?? mdText(f.date)} {saved?.time ?? timeText} · {saved?.amount ?? amountText}</span>
+          {saved && saved.n > 1 && <span className="muted small">{t('共 {0} 筆', [saved.n])}{saved.skipped ? t('，略過 {0} 天放假日', [saved.skipped]) : ''}</span>}
         </div>
         {bar(<>
           <a className="btn" href={`#/attendance?ym=${f.date.slice(0, 7)}&sel=${f.date}`}>{t('到月曆看這天')}</a>
@@ -110,7 +171,8 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
         </div>
         <div style={{ padding: '4px 20px', borderRadius: 14, background: 'var(--raised)', border: '1px solid var(--line)' }}>
           <div className="kvrow"><span className="muted">{t('員工')}</span><b>{emp?.name}</b></div>
-          <div className="kvrow"><span className="muted">{t('日期')}</span><b className="num">{mdText(f.date)}</b></div>
+          <div className="kvrow"><span className="muted">{t('日期')}</span><b className="num">{dateText}</b></div>
+          {exp && <div className="kvrow"><span className="muted">{t('登記筆數')}</span><b className="num">{days.length}{exp.skipped.length ? t('（略過 {0} 天放假日）', [exp.skipped.length]) : ''}</b></div>}
           <div className="kvrow"><span className="muted">{t('假別')}</span><b>{typeName(type)}</b></div>
           <div className="kvrow"><span className="muted">{t('時間')}</span><b className="num">{timeText}</b></div>
           <div className="kvrow"><span className="muted">{t('時數')}</span><b className="num">{amountText}</b></div>
@@ -141,9 +203,15 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
       <div className="row-wrap" style={{ gap: 24 }}>
         <form id={formId} className="stack" style={{ flex: '3 1 420px', minWidth: 0, gap: 22 }} onSubmit={(e) => { e.preventDefault(); if (check.ok) submit(); }}>
           <div className="form-grid">
-            <label className="field">{t('日期')}
-              <input className="input lg" type="date" value={f.date} onChange={(e) => set({ date: e.target.value })} required />
+            <label className="field">{canRange ? t('起始日') : t('日期')}
+              <input className="input lg" type="date" value={f.date} required
+                onChange={(e) => { set({ date: e.target.value }); if (!endDate || endDate <= f.date || endDate < e.target.value) setEndDate(e.target.value); }} />
             </label>
+            {canRange && (
+              <label className="field">{t('結束日')}
+                <input className="input lg" type="date" value={endDate} min={f.date} onChange={(e) => setEndDate(e.target.value)} />
+              </label>
+            )}
             <label className="field">{t('員工')}
               <select className="input lg" value={f.employeeId ?? ''} onChange={(e) => pickEmp(e.target.value)}>
                 <option value="">{t('請選擇員工')}</option>
@@ -159,29 +227,10 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
           </label>
   
           {type && !isLate && (
-            <div className="stack" style={{ gap: 12 }}>
-              <div className="field">{isSegOnly ? t('時段（{0}只能選上午、下午或全天）', [typeName(type)]) : t('時段')}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {SEGMENTS.map((s) => (
-                    <button key={s.name} type="button" className={segName === s.name ? 'btn sm on' : 'btn sm'} aria-pressed={segName === s.name}
-                      onClick={() => set({ start: s.start, end: s.end })}>{t(s.name)}</button>
-                  ))}
-                </div>
-              </div>
-              {!isSegOnly && (
-                <div className="form-grid">
-                  <label className="field">{t('起')}
-                    <select className="input lg" value={f.start} onChange={(e) => set({ start: e.target.value })}>
-                      {TIME_SLOTS.slice(0, -1).map((x) => <option key={x}>{x}</option>)}
-                    </select>
-                  </label>
-                  <label className="field">{t('訖')}
-                    <select className="input lg" value={f.end} onChange={(e) => set({ end: e.target.value })}>
-                      {TIME_SLOTS.slice(1).map((x) => <option key={x}>{x}</option>)}
-                    </select>
-                  </label>
-                </div>
-              )}
+            <div className="stack" style={{ gap: 16 }}>
+              {picker(isRange ? t('第一天時段') : isSegOnly ? t('時段（{0}只能選上午、下午或全天）', [typeName(type)]) : t('時段'), f, set)}
+              {isRange && picker(t('最後一天時段'), last, (p) => setLast((o) => ({ ...o, ...p })))}
+              {canRange && <span className="muted small">{isRange ? t('中間的上班日一律登記全天；放假日自動略過。') : t('想一次登記多天，請選擇結束日。')}</span>}
             </div>
           )}
           {isLate && (
@@ -213,6 +262,8 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
         <aside className="card" aria-label={t('即時試算')} style={{ flex: '1 1 260px', minWidth: 0, padding: 22, display: 'flex', flexDirection: 'column', gap: 4, background: variant === 'dialog' ? 'var(--raised)' : undefined }}>
           <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t('即時試算')}</h2>
           <div className="kvrow"><span className="muted">{t('時數')}</span><b className="num">{type ? amountText : '—'}</b></div>
+          {exp && days.length > 0 && <div className="kvrow"><span className="muted">{t('登記筆數')}</span><b className="num">{days.length}</b></div>}
+          {exp && exp.skipped.length > 0 && <span className="muted small">{t('略過 {0} 天放假日', [exp.skipped.length])}</span>}
           <div className="kvrow"><span className="muted">{t('時薪（本薪 ÷ 30 ÷ 8）')}</span><b className="num">{emp ? `NT$ ${hourlyRate(check.salary).toFixed(1)}` : '—'}</b></div>
           <div className="kvrow"><span className="muted">{t('給薪比例')}</span><b className="num">{type ? `${Math.round(type.payRatio * 100)}%` : '—'}</b></div>
           <div className="kvrow"><span className="muted">{t('扣除金額')}</span><b className="num" style={{ fontSize: 20, color: 'var(--accent)' }}>NT$ {money(check.deduction)}</b></div>

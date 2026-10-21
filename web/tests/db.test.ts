@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import { Db, UserError, calendarsOf } from '../src/data/db';
 import { msg } from '../src/rules/msg';
+import { checkLeaveDays, expandLeaveRange } from '../src/rules/rules';
 import { MIGRATIONS } from '../src/data/schema';
 import { parseGovCalendar } from '../src/data/calendarXlsx';
 import { importLegacyJson } from '../src/data/legacyImport';
@@ -81,6 +82,32 @@ describe('Db', () => {
     expect(() => db.saveLeave({ employeeId: id, date: '2026-10-18', type: 'sick', start: '09:30', end: '12:00', reason: '' })).toThrow(UserError);
     db.deleteLeave(lid);
     expect(db.state().leaves).toHaveLength(0);
+  });
+  it('多日請假：略過放假日、首尾日用各自的時段、中間全天', async () => {
+    const { db, id } = await seeded();
+    const base = { employeeId: id, date: '2026-10-08', type: 'sick', start: '13:30', end: '18:30', reason: '感冒' };
+    const exp = expandLeaveRange(base, '2026-10-13', { start: '09:30', end: '12:00' }, calendarsOf(db.state().days));
+    expect(exp.skipped).toEqual(['2026-10-09', '2026-10-10', '2026-10-11']);
+    expect(exp.days.map((d) => `${d.date} ${d.start}-${d.end}`)).toEqual(['2026-10-08 13:30-18:30', '2026-10-12 09:30-18:30', '2026-10-13 09:30-12:00']);
+    expect(db.saveLeaves(exp.days)).toHaveLength(3);
+    expect(db.state().leaves.map((l) => l.hours)).toEqual([5, 7.5, 2.5]);
+  });
+  it('多日請假有一天不行就整批退回，並指出是哪一天', async () => {
+    const { db, id } = await seeded();
+    db.saveLeave({ employeeId: id, date: '2026-10-13', type: 'sick', start: '09:30', end: '12:00', reason: '' });
+    const days = expandLeaveRange({ employeeId: id, date: '2026-10-12', type: 'personal', start: '09:30', end: '18:30', reason: '' }, '2026-10-14', { start: '09:30', end: '18:30' }, calendarsOf(db.state().days)).days;
+    expect(() => db.saveLeaves(days)).toThrow(/^2026-10-13：/);
+    expect(db.state().leaves).toHaveLength(1);
+  });
+  it('多日特休額度逐日累計', async () => {
+    const { db, id } = await seeded();
+    db.saveLeave({ employeeId: id, date: '2026-10-08', type: 'annual', start: '09:30', end: '18:30', reason: '' });
+    const ctx = { ...db.state(), calendars: calendarsOf(db.state().days) };
+    const days = expandLeaveRange({ employeeId: id, date: '2026-10-12', type: 'annual', start: '09:30', end: '18:30', reason: '' }, '2026-10-16', { start: '09:30', end: '18:30' }, ctx.calendars).days;
+    expect(checkLeaveDays(days, ctx).ok).toBe(true);
+    const many = expandLeaveRange({ employeeId: id, date: '2026-10-12', type: 'annual', start: '09:30', end: '18:30', reason: '' }, '2027-01-31', { start: '09:30', end: '18:30' }, ctx.calendars);
+    expect(many.error?.toString()).toBe('一次最多登記 92 天');
+    expect(expandLeaveRange({ employeeId: id, date: '2026-10-12', type: 'annual', start: '09:30', end: '18:30', reason: '' }, '2026-10-11', { start: '09:30', end: '18:30' }, ctx.calendars).error?.toString()).toBe('結束日不能早於起始日');
   });
   it('有紀錄的日子不能改為放假日', async () => {
     const { db, id } = await seeded();

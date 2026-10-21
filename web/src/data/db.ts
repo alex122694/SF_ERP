@@ -218,6 +218,17 @@ export class Db {
     return existing.id;
   }
 
+  /** 一次登記多天：全部通過才存檔，任何一天不行就整批退回並指出是哪一天 */
+  saveLeaves(inputs: LeaveInput[]): number[] {
+    return this.tx(() => inputs.map((input) => {
+      try {
+        return this.saveLeave(input);
+      } catch (e) {
+        throw e instanceof UserError ? new UserError(msg('{0}：{1}', [input.date, e.msg])) : e;
+      }
+    }));
+  }
+
   deleteLeave(id: number) {
     this.run('DELETE FROM leave_record WHERE id = ?', [id]);
   }

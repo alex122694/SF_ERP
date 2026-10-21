@@ -1,37 +1,44 @@
 // 請假總覽（規格第 11 節）：每位員工一組，假別、時數、扣款逐列；姓名、本薪、總扣款金額跨列合併
+// 區間有兩種：月結區間（上月 23 日 ~ 本月 22 日）與指定區間；畫面與匯出 Excel 用同一個區間
 import { go, useApp } from '../ui/app-context';
 import { Icon } from '../ui/icons';
 import { Annual, LeaveAmount } from '../ui/annual-unit';
 import { amountText, downloadBlob, fmtHours, mdText, money, ntd, typeColor, typeName } from '../ui/format';
 import { typeOf } from '../ui/derive';
-import { daysInMonth, type LeaveType } from '../rules/rules';
+import { isDateStr, settlementMonthOf, settlementRange, type LeaveType } from '../rules/rules';
 import { buildXlsx, XLSX_TYPE } from '../data/xlsxWrite';
 import { t } from '../i18n';
 
 export function OverviewPage() {
   const { st, today, route } = useApp();
-  const years = [...new Set([Number(today.slice(0, 4)), ...st.calendarYears.map((c) => c.year), ...st.leaves.map((l) => Number(l.date.slice(0, 4)))])].sort((a, b) => b - a);
-  const year = Number(route.q.get('y')) || Number(today.slice(0, 4));
+  const cur = settlementMonthOf(today);
+  const years = [...new Set([cur.year, ...st.calendarYears.map((c) => c.year), ...st.leaves.map((l) => settlementMonthOf(l.date).year)])].sort((a, b) => b - a);
+  const mode = route.q.get('mode') === 'custom' ? 'custom' : 'period';
+  const year = Number(route.q.get('y')) || cur.year;
   const monthQ = route.q.get('m');
-  const month = monthQ === 'all' ? 0 : Number(monthQ) || Number(today.slice(5, 7));
+  const month = monthQ === 'all' ? 0 : Number(monthQ) || cur.month;
   const open = Number(route.q.get('open')) || 0;
+  const periodRange = settlementRange(year, month);
+  const fromQ = route.q.get('from'), toQ = route.q.get('to');
+  const { from, to } = mode === 'custom'
+    ? { from: fromQ && isDateStr(fromQ) ? fromQ : settlementRange(cur.year, cur.month).from, to: toQ && isDateStr(toQ) ? toQ : settlementRange(cur.year, cur.month).to }
+    : periodRange;
+  const rangeOk = from <= to;
   const nav = (patch: Record<string, string | number>) => {
-    const q = new URLSearchParams({ y: String(year), m: month ? String(month) : 'all' });
+    const q = new URLSearchParams({ mode, y: String(year), m: month ? String(month) : 'all', from, to });
     if (open) q.set('open', String(open));
     for (const [k, v] of Object.entries(patch)) q.set(k, String(v));
     if (q.get('open') === '0') q.delete('open');
     go(`#/overview?${q}`);
   };
+  const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
 
-  const prefix = month ? `${year}-${String(month).padStart(2, '0')}` : String(year);
-  const from = month ? `${prefix}-01` : `${year}-01-01`;
-  const to = month ? `${prefix}-${daysInMonth(year, month)}` : `${year}-12-31`;
-  const recs = st.leaves.filter((l) => l.date.startsWith(prefix));
+  const recs = rangeOk ? st.leaves.filter((l) => l.date >= from && l.date <= to) : [];
   const types = st.leaveTypes;
   const sumOf = (list: typeof recs, code: string) => list.filter((l) => l.type === code).reduce((s, l) => s + l.hours, 0);
   const show = (code: string, h: number) => (code === 'late' ? String(Math.round(h * 60)) : fmtHours(h));
 
-  const rows = st.employees
+  const rows = (rangeOk ? st.employees : [])
     .filter((e) => recs.some((l) => l.employeeId === e.id) || (e.hireDate <= to && (!e.leaveDate || e.leaveDate >= from)))
     .map((e) => {
       const mine = recs.filter((l) => l.employeeId === e.id);
@@ -62,26 +69,46 @@ export function OverviewPage() {
       [t('合計 {0} 人', [rows.length]), '', '', '', '', dedTotal, dedTotal],
     ];
     const bytes = buildXlsx(sheet, { rows: rowsOut, widths: [14, 8, 12, 14, 12, 12, 14], boldRows: [0, rowsOut.length - 1] });
-    downloadBlob(`${sheet}_${month ? prefix : t('{0}全年', [year])}.xlsx`, new Blob([bytes], { type: XLSX_TYPE }));
+    downloadBlob(`${sheet}_${from}~${to}.xlsx`, new Blob([bytes], { type: XLSX_TYPE }));
   };
 
   return (
     <div className="page">
       <div className="page-head">
         <h1 style={{ flex: '1 1 240px' }}>{t('請假總覽')}</h1>
-        <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>{t('年度')}
-          <select className="input" style={{ width: 'auto' }} value={year} onChange={(e) => nav({ y: e.target.value })}>
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </label>
-        <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>{t('月份')}
-          <select className="input" style={{ width: 'auto' }} value={month || 'all'} onChange={(e) => nav({ m: e.target.value })}>
-            <option value="all">{t('全年')}</option>
-            {Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>{t('{0} 月', [i + 1])}</option>)}
-          </select>
-        </label>
-        <button type="button" className="btn primary" onClick={exportXlsx}><Icon name="download" size={18} stroke={1.8} />{t('匯出 Excel')}</button>
+        <div role="group" aria-label={t('區間方式')} className="seg">
+          <button type="button" className={mode === 'period' ? 'btn sm on' : 'btn sm'} aria-pressed={mode === 'period'} onClick={() => nav({ mode: 'period' })}>{t('月結區間')}</button>
+          <button type="button" className={mode === 'custom' ? 'btn sm on' : 'btn sm'} aria-pressed={mode === 'custom'} onClick={() => nav({ mode: 'custom', from: periodRange.from, to: periodRange.to })}>{t('指定區間')}</button>
+        </div>
+        {mode === 'period' ? <>
+          <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>{t('年度')}
+            <select className="input" style={{ width: 'auto' }} value={year} onChange={(e) => nav({ y: e.target.value })}>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </label>
+          <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>{t('月份')}
+            <select className="input" style={{ width: 'auto' }} value={month || 'all'} onChange={(e) => nav({ m: e.target.value })}>
+              <option value="all">{t('全年')}</option>
+              {Array.from({ length: 12 }, (_, i) => {
+                const r = settlementRange(year, i + 1);
+                return <option key={i} value={i + 1}>{t('{0} 月（{1}～{2}）', [i + 1, md(r.from), md(r.to)])}</option>;
+              })}
+            </select>
+          </label>
+        </> : <>
+          <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>{t('起日')}
+            <input className="input" type="date" style={{ width: 'auto' }} value={from} onChange={(e) => nav({ from: e.target.value })} />
+          </label>
+          <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>{t('迄日')}
+            <input className="input" type="date" style={{ width: 'auto' }} value={to} onChange={(e) => nav({ to: e.target.value })} />
+          </label>
+        </>}
+        <button type="button" className="btn primary" onClick={exportXlsx} disabled={!rangeOk}><Icon name="download" size={18} stroke={1.8} />{t('匯出 Excel')}</button>
       </div>
+
+      {rangeOk
+        ? <span className="muted num" style={{ fontSize: 13, fontWeight: 700 }}>{t('區間：{0} ～ {1}', [from, to])}</span>
+        : <div className="alert warn">{t('起日不能晚於迄日。')}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))', gap: 12 }}>
         {types.map((tp, i) => (
