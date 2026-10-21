@@ -105,4 +105,8 @@ INSERT INTO app_setting VALUES ('day_reasons', '["颱風停班","公司自訂休
 ALTER TABLE leave_record ADD COLUMN salary INTEGER NOT NULL DEFAULT 0;
 UPDATE leave_record SET salary = (SELECT e.salary FROM employee e WHERE e.id = leave_record.employee_id);
 `,
+  // 遲到沒有分鐘上限（原為 30 分鐘）
+  `
+UPDATE leave_type SET max_minutes = NULL WHERE code = 'late';
+`,
 ];

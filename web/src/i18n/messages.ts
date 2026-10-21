@@ -102,7 +102,7 @@ export const M: Record<string, [string, string, string]> = {
   '以半天為單位：上午、下午各算半天（4 h），全天算 1 天（8 h）；剩餘額度不足不能登記': ["Taken in half days: morning or afternoon counts as half a day (4 h), a full day as 1 day (8 h). Cannot be recorded if the balance is insufficient.", "半日単位：午前・午後はそれぞれ半日（4 h）、終日は 1 日（8 h）。残日数が足りない場合は登録できません。", "반일 단위: 오전·오후는 각각 반일(4 h), 종일은 1일(8 h). 잔여 일수가 부족하면 등록할 수 없습니다."],
   '沒有請假的缺勤，以事假登記': ["Absence without leave is recorded as personal leave", "無届けの欠勤は私用休暇として登録", "무단 결근은 개인 휴가로 등록"],
   '限女性': ["Women only", "女性のみ", "여성만"],
-  '09:30 起算，最多 30 分鐘；超過以事假登記': ["Counted from 09:30, up to 30 minutes; longer is recorded as personal leave", "09:30 から計算、最大 30 分。超える場合は私用休暇で登録", "09:30부터 계산, 최대 30분. 초과 시 개인 휴가로 등록"],
+  '09:30 起算，依實際到班時間計分鐘（午休不算），沒有上限': ["Counted in minutes from 09:30 to the actual arrival time (lunch break excluded), with no upper limit", "09:30 から実際の出社時刻まで分単位で計算（昼休みは除く）、上限なし", "09:30부터 실제 출근 시간까지 분 단위로 계산(점심시간 제외), 상한 없음"],
 
   // ---------- 開啟資料夾 ----------
   '無法開啟資料夾：{0}': ["Could not open the folder: {0}", "フォルダーを開けません：{0}", "폴더를 열 수 없습니다: {0}"],
@@ -177,7 +177,7 @@ export const M: Record<string, [string, string, string]> = {
   '{0}只有女性可以選': ["{0} is available to women only", "{0}は女性のみ選択できます", "{0}은(는) 여성만 선택할 수 있습니다"],
   '請選擇起訖時間': ["Select start and end times", "開始・終了時刻を選択してください", "시작/종료 시간을 선택하세요"],
   '遲到從 {0} 起算': ["Lateness is counted from {0}", "遅刻は {0} から計算します", "지각은 {0}부터 계산합니다"],
-  '遲到只能 1～30 分鐘；超過 30 分鐘請改用事假登記。': ["Lateness can only be 1–30 minutes; for longer, record personal leave instead.", "遅刻は 1～30 分のみです。30 分を超える場合は私用休暇で登録してください。", "지각은 1~30분만 가능합니다. 30분을 넘으면 개인 휴가로 등록하세요."],
+  '實際到班時間須晚於 {0}，且不能晚於 {1}。': ["The actual arrival time must be after {0} and no later than {1}.", "実際の出社時刻は {0} より後、{1} までにしてください。", "실제 출근 시간은 {0} 이후, {1} 이전이어야 합니다."],
   '起訖時間須對齊 30 分鐘': ["Start and end times must be on the half hour", "開始・終了時刻は 30 分単位にしてください", "시작/종료 시간은 30분 단위여야 합니다"],
   '訖時間須晚於起時間': ["End time must be after start time", "終了時刻は開始時刻より後にしてください", "종료 시간은 시작 시간보다 늦어야 합니다"],
   '{0}只能選全天、上午或下午': ["{0} can only be a full day, morning or afternoon", "{0}は終日・午前・午後のみ選べます", "{0}은(는) 종일, 오전, 오후만 선택할 수 있습니다"],
@@ -235,7 +235,7 @@ export const M: Record<string, [string, string, string]> = {
   '起': ["From", "開始", "시작"],
   '訖': ["To", "終了", "종료"],
   '起（固定）': ["From (fixed)", "開始（固定）", "시작 (고정)"],
-  '實際到班時間（最晚 10:00）': ["Actual arrival time (10:00 at the latest)", "実際の出社時刻（10:00 まで）", "실제 출근 시간 (최대 10:00)"],
+  '實際到班時間': ["Actual arrival time", "実際の出社時刻", "실제 출근 시간"],
   '理由（選填）': ["Reason (optional)", "理由（任意）", "사유 (선택)"],
   '例如：家中有事、看診': ["e.g. family matter, doctor's visit", "例：家庭の用事、通院", "예: 집안일, 병원 진료"],
   '即時試算': ["Live estimate", "リアルタイム試算", "실시간 계산"],

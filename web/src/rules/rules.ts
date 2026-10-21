@@ -78,7 +78,7 @@ export const annualMinutes = (start: string, end: string) =>
   (start === SEGMENTS[0].start && end === SEGMENTS[0].end ? 2 : 1) * HALF_DAY_MINUTES;
 
 export const LATE_START = '09:30';
-export const LATE_MAX_MIN = 30;
+export const LATE_END_MAX = '18:30';
 
 export const isTimeStr = (t: unknown): t is string => typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 export const toMin = (t: string) => {
@@ -120,14 +120,14 @@ export const DEFAULT_LEAVE_TYPES: LeaveType[] = [
   { code: 'sick', name: '病假', payRatio: 0.5, unitMinutes: 30, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: false, color: 'sick', sortOrder: 3 },
   { code: 'menstrual', name: '生理假', payRatio: 0.5, unitMinutes: 30, segmentOnly: false, femaleOnly: true, maxMinutes: null, confirmTwice: false, color: 'menstrual', sortOrder: 4 },
   { code: 'official', name: '公假', payRatio: 1, unitMinutes: 30, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: false, color: 'official', sortOrder: 5 },
-  { code: 'late', name: '遲到', payRatio: 0, unitMinutes: 1, segmentOnly: false, femaleOnly: false, maxMinutes: LATE_MAX_MIN, confirmTwice: false, color: 'late', sortOrder: 6 },
+  { code: 'late', name: '遲到', payRatio: 0, unitMinutes: 1, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: false, color: 'late', sortOrder: 6 },
 ];
 
 export const LEAVE_TYPE_NOTES: Record<string, string> = {
   annual: '以半天為單位：上午、下午各算半天（4 h），全天算 1 天（8 h）；剩餘額度不足不能登記',
   personal: '沒有請假的缺勤，以事假登記',
   menstrual: '限女性',
-  late: '09:30 起算，最多 30 分鐘；超過以事假登記',
+  late: '09:30 起算，依實際到班時間計分鐘（午休不算），沒有上限',
 };
 
 export function unitText(t: LeaveType): Msg {
@@ -298,9 +298,9 @@ export interface Calendars {
   isHoliday(date: string): boolean | undefined;
 }
 
-/** 一筆紀錄算出的分鐘數：遲到從 09:30 起算、特休以半天為單位、其他依上班時段重疊；起訖須為 HH:MM */
+/** 一筆紀錄算出的分鐘數：遲到從 09:30 起算到實際到班（扣除午休）、特休以半天為單位、其他依上班時段重疊；起訖須為 HH:MM */
 export function recordMinutes(type: string, start: string, end: string): number {
-  if (type === 'late') return Math.max(0, toMin(end) - toMin(LATE_START));
+  if (type === 'late') return leaveMinutes(LATE_START, end);
   if (type === 'annual' && isSegment(start, end)) return annualMinutes(start, end);
   return leaveMinutes(start, end);
 }
@@ -355,7 +355,7 @@ export function checkLeave(
   if (!timesOk) return fail(msg('請選擇起訖時間'));
   if (t.code === 'late') {
     if (input.start !== LATE_START) return fail(msg('遲到從 {0} 起算', [LATE_START]));
-    if (minutes < 1 || minutes > LATE_MAX_MIN) return fail(msg('遲到只能 1～30 分鐘；超過 30 分鐘請改用事假登記。'));
+    if (minutes < 1 || input.end > LATE_END_MAX) return fail(msg('實際到班時間須晚於 {0}，且不能晚於 {1}。', [LATE_START, LATE_END_MAX]));
   } else {
     if (!TIME_SLOTS.includes(input.start) || !TIME_SLOTS.includes(input.end)) return fail(msg('起訖時間須對齊 30 分鐘'));
     if (toMin(input.start) >= toMin(input.end)) return fail(msg('訖時間須晚於起時間'));

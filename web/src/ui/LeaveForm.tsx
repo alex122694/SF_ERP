@@ -6,7 +6,7 @@ import { Annual, AnnualNum, AnnualUnit } from './annual-unit';
 import { fmtHours, mdText, money, ntd, typeName } from './format';
 import { msgText, t, tr } from '../i18n';
 import {
-  LATE_START, LEAVE_HINT, SEGMENTS, TIME_SLOTS, checkLeave, checkLeaveDays, expandLeaveRange, hourlyRate, isDateStr, isEmployedOn, payText,
+  LATE_END_MAX, LATE_START, LEAVE_HINT, SEGMENTS, TIME_SLOTS, checkLeave, checkLeaveDays, expandLeaveRange, hourlyRate, isDateStr, isEmployedOn, payText,
   type LeaveCheck, type LeaveInput, type LeaveRecord,
 } from '../rules/rules';
 import { msg } from '../rules/msg';
@@ -236,8 +236,8 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
           {isLate && (
             <div className="form-grid">
               <label className="field">{t('起（固定）')}<input className="input lg" value={LATE_START} readOnly /></label>
-              <label className="field">{t('實際到班時間（最晚 10:00）')}
-                <input className="input lg" type="time" min="09:31" max="10:00" value={f.end} onChange={(e) => set({ end: e.target.value })} />
+              <label className="field">{t('實際到班時間')}
+                <input className="input lg" type="time" min="09:31" max={LATE_END_MAX} value={f.end} onChange={(e) => set({ end: e.target.value })} />
               </label>
             </div>
           )}
