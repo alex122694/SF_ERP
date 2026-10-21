@@ -109,4 +109,18 @@ UPDATE leave_record SET salary = (SELECT e.salary FROM employee e WHERE e.id = l
   `
 UPDATE leave_type SET max_minutes = NULL WHERE code = 'late';
 `,
+  // 新增曠職假別；扣除金額改存不取整的值（逐筆加總後才取整），既有紀錄依已存的時數與薪資重算
+  `
+INSERT OR IGNORE INTO leave_type VALUES ('absent', '曠職', 0, 30, 0, 0, NULL, 1, 'absent', 7);
+UPDATE leave_record SET deduction = round(hours * 60) * salary
+  * (1 - COALESCE((SELECT t.pay_ratio FROM leave_type t WHERE t.code = leave_record.type_code), 0)) / 14400.0;
+`,
+  // 部門：在制度與設定維護清單，員工可選一個（可為空）
+  `
+CREATE TABLE department (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE
+);
+ALTER TABLE employee ADD COLUMN department_id INTEGER REFERENCES department(id);
+`,
 ];

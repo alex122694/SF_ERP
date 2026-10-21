@@ -8,7 +8,7 @@ import { SETTLE_LABEL as ACTION_LABEL, annualNow, settlementFor, typeOf } from '
 import { EmployeeDialog } from './Employees';
 import { msgText, t, tr } from '../i18n';
 import {
-  addMonths, annualPeriod, annualStatus, asOfDate, daysBetween, daysInMonth, isEmployedOn, seniorityText, ymd,
+  addMonths, annualPeriod, annualStatus, asOfDate, daysBetween, daysInMonth, isEmployedOn, seniorityText, sumDeduction, ymd,
   type AnnualPeriod,
 } from '../rules/rules';
 
@@ -30,10 +30,10 @@ export function EmployeeDetailPage() {
   const yearRecs = mine.filter((l) => l.date.startsWith(String(year)));
   const sumBy = (code: string) => yearRecs.filter((l) => l.type === code).reduce((s, l) => s + l.hours, 0);
   const hoursTotal = yearRecs.filter((l) => l.type !== 'late').reduce((s, l) => s + l.hours, 0);
-  const dedTotal = yearRecs.reduce((s, l) => s + l.deduction, 0);
+  const dedTotal = sumDeduction(yearRecs.map((l) => l.deduction));
   const lates = yearRecs.filter((l) => l.type === 'late');
   const dedParts = st.leaveTypes
-    .map((tp) => ({ tp, v: yearRecs.filter((l) => l.type === tp.code).reduce((s, l) => s + l.deduction, 0) }))
+    .map((tp) => ({ tp, v: sumDeduction(yearRecs.filter((l) => l.type === tp.code).map((l) => l.deduction)) }))
     .filter((x) => x.v > 0);
 
   // 特休週年紀錄：由第一個週年期間到目前
@@ -78,6 +78,7 @@ export function EmployeeDetailPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px 24px' }}>
             <KV k={t('到職日')} v={emp.hireDate} />
             <KV k={t('年資')} v={msgText(seniorityText(emp.annualBaseDate, asOf))} />
+            <KV k={t('部門')} v={st.departments.find((d) => d.id === emp.departmentId)?.name ?? '—'} />
             <KV k={t('月本薪')} v={ntd(emp.salary)} />
             <KV k={t('特休年資起算日')} v={emp.annualBaseDate} />
             {emp.leaveDate && <KV k={t('離職日')} v={emp.leaveDate} />}

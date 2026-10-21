@@ -43,6 +43,9 @@ export function AttendancePage() {
   const cells = Array.from({ length: Math.ceil((lead + dim) / 7) * 7 }, (_, i) => i - lead + 1);
   const shown = st.employees.filter((e) => (!empFilter || e.id === empFilter) && e.hireDate <= `${ym}-${dim}` && (!e.leaveDate || e.leaveDate >= `${ym}-01`));
 
+  const absents = leaves.filter((l) => l.type === 'absent');
+  const absentType = st.leaveTypes.find((x) => x.code === 'absent');
+
   const selList = byDate.get(sel) ?? [];
   const selHoliday = cal.isHoliday(sel);
   const selDay = st.days.get(sel);
@@ -86,6 +89,23 @@ export function AttendancePage() {
         {st.leaveTypes.map((tp) => <span key={tp.code} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="dot" style={{ background: typeColor(tp) }} />{typeName(tp)}</span>)}
         <span className="muted" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--holiday)', border: '1px solid var(--line)' }} />{t('放假日')}</span>
       </div>
+
+      {absentType && (
+        <nav aria-label={t('曠職快速導覽')} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}>
+            <span className="dot" style={{ background: typeColor(absentType) }} />{t('曠職快速導覽')}
+          </span>
+          {absents.length === 0
+            ? <span className="muted small">{t('這個月沒有曠職紀錄。')}</span>
+            : absents.map((l) => (
+              <button key={l.id} type="button" className="btn sm" aria-label={t('編輯 {0} 的曠職紀錄', [empOf(st, l.employeeId)?.name ?? ''])}
+                style={{ background: typeTint(absentType), color: typeColor(absentType) }}
+                onClick={() => { nav({ sel: l.date }); setEditing(l); }} disabled={src.readOnly}>
+                {mdText(l.date)} {empOf(st, l.employeeId)?.name} {amountText(l, unit)}
+              </button>
+            ))}
+        </nav>
+      )}
 
       {!yearLoaded && (
         <div className="alert warn" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

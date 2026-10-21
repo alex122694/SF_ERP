@@ -15,6 +15,8 @@ export interface DataSource {
   state(): State;
   saveEmployee(input: EmployeeInput, id?: number): Promise<number>;
   deleteEmployee(id: number): Promise<void>;
+  saveDepartment(name: string, id?: number): Promise<number>;
+  deleteDepartment(id: number): Promise<void>;
   saveLeave(input: LeaveInput, id?: number): Promise<number>;
   saveLeaves(inputs: LeaveInput[]): Promise<number[]>;
   deleteLeave(id: number): Promise<void>;
@@ -132,6 +134,8 @@ export class LiteSource implements DataSource {
 
   saveEmployee(input: EmployeeInput, id?: number) { return this.mutate((db) => db.saveEmployee(input, id)); }
   deleteEmployee(id: number) { return this.mutate((db) => db.deleteEmployee(id)); }
+  saveDepartment(name: string, id?: number) { return this.mutate((db) => db.saveDepartment(name, id)); }
+  deleteDepartment(id: number) { return this.mutate((db) => db.deleteDepartment(id)); }
   saveLeave(input: LeaveInput, id?: number) { return this.mutate((db) => db.saveLeave(input, id)); }
   saveLeaves(inputs: LeaveInput[]) { return this.mutate((db) => db.saveLeaves(inputs)); }
   deleteLeave(id: number) { return this.mutate((db) => db.deleteLeave(id)); }

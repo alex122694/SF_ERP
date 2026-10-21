@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import cases from '../../shared/rules-cases.json';
 import {
   DEFAULT_LEAVE_TYPES, annualDaysForYears, annualMinutes, annualPeriod, annualStatus, buildSettlement, cashOut, checkLeave,
-  checkEmployee, deduction, leaveMinutes, seniorityText, settlementMonthOf, settlementRange, settlementsDue,
+  checkEmployee, deduction, leaveMinutes, roundYuan, seniorityText, sumDeduction, settlementMonthOf, settlementRange, settlementsDue,
   type Employee, type LeaveCheck, type LeaveContext, type LeaveRecord, type Settlement,
 } from '../src/rules/rules';
 
 describe('shared/rules-cases.json', () => {
   it.each(cases.leaveMinutes)('leaveMinutes $start-$end', (c) => expect(leaveMinutes(c.start, c.end)).toBe(c.minutes));
   it.each(cases.deduction)('deduction $minutes min $salary $payRatio', (c) =>
-    expect(deduction(c.minutes, c.salary, c.payRatio)).toBe(c.amount));
+    expect(roundYuan(deduction(c.minutes, c.salary, c.payRatio))).toBe(c.amount));
+  it.each(cases.deductionSum)('deductionSum $items.length 筆', (c) =>
+    expect(sumDeduction(c.items.map((i) => deduction(i.minutes, i.salary, i.payRatio)))).toBe(c.amount));
   it.each(cases.cashOut)('cashOut $hours h $salary', (c) => expect(cashOut(c.hours, c.salary)).toBe(c.amount));
   it.each(cases.annualDaysForYears)('annualDays $years', (c) => expect(annualDaysForYears(c.years)).toBe(c.days));
   it.each(cases.annualPeriod)('annualPeriod $base @ $date', (c) => {
@@ -21,7 +23,7 @@ describe('shared/rules-cases.json', () => {
 
 const emp = (over: Partial<Employee> = {}): Employee => ({
   id: 1, name: '陳怡君', gender: 'F', salary: 36000, hireDate: '2021-03-01', annualBaseDate: '2021-03-01',
-  leaveDate: null, email: '', phone: '', ...over,
+  leaveDate: null, email: '', phone: '', departmentId: null, ...over,
 });
 let nextId = 100;
 const rec = (date: string, type: string, start: string, end: string, employeeId = 1): LeaveRecord => ({
@@ -58,13 +60,14 @@ describe('月結區間（上月 23 日 ~ 本月 22 日）', () => {
 describe('checkLeave', () => {
   it('算出時數與扣款', () => {
     const r = checkLeave(input(), ctx());
-    expect(r).toMatchObject({ ok: true, hours: 5, deduction: 375 });
+    expect(r).toMatchObject({ ok: true, hours: 5.5, minutes: 330 });
+    expect(r.deduction).toBeCloseTo(412.5, 6);
   });
   it('遲到依實際分鐘扣款，沒有上限；午休不算，最晚 18:30', () => {
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '09:42', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 12, deduction: 30 });
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '10:01', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 31 });
-    expect(checkLeave(input({ type: 'late', start: '09:30', end: '14:00', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 150 + 30 });
-    expect(checkLeave(input({ type: 'late', start: '09:30', end: '18:30', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 450 });
+    expect(checkLeave(input({ type: 'late', start: '09:30', end: '14:00', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 150 + 30 + 30 });
+    expect(checkLeave(input({ type: 'late', start: '09:30', end: '18:30', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 480 });
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '18:31', employeeId: 1 }), ctx()).ok).toBe(false);
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '09:30', employeeId: 1 }), ctx()).ok).toBe(false);
   });

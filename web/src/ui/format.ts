@@ -1,7 +1,7 @@
-import { toDays, weekday, type LeaveRecord, type LeaveType } from '../rules/rules';
+import { roundYuan, toDays, weekday, type LeaveRecord, type LeaveType } from '../rules/rules';
 import { LANGS, getLang, t, type Lang } from '../i18n';
 
-export const money = (n: number) => n.toLocaleString('en-US');
+export const money = (n: number) => roundYuan(n).toLocaleString('en-US');
 export const ntd = (n: number) => `NT$ ${money(n)}`;
 
 export type AnnualUnitName = 'day' | 'hour';

@@ -60,7 +60,8 @@ export function SettingsPage() {
           <h2 style={{ marginBottom: 6 }}>{t('上班時間與扣款')}</h2>
           <div className="kvrow"><span className="muted">{t('上班')}</span><b className="num">{st.settings.work_start}～{st.settings.work_end}</b></div>
           <div className="kvrow"><span className="muted">{t('午休')}</span><b className="num">{st.settings.lunch_start}～{st.settings.lunch_end}</b></div>
-          <div className="kvrow"><span className="muted">{t('上午／下午／全天')}</span><b className="num">{t('2.5 h／5 h／7.5 h')}</b></div>
+          <div className="kvrow"><span className="muted">{t('上午／下午／全天')}</span><b className="num">{t('2.5 h／5.5 h／8 h')}</b></div>
+          <span className="muted small" style={{ margin: '-2px 0 4px' }}>{t('實際午休 12:00～13:30，只扣 1 小時，多出的 30 分鐘列為午休 bonus，13:30～14:00 以 1 小時計。')}</span>
           <div className="kvrow"><span className="muted">{t('日數換算')}</span><b>{t('1 日 = {0} h', [st.settings.hours_per_day])}</b></div>
           <div className="kvrow"><span className="muted">{t('月結區間')}</span><b>{t('上月 23 日 ～ 本月 22 日')}</b></div>
           <div className="kvrow"><span className="muted">{t('時薪')}</span><b>{t('本薪 ÷ 30 ÷ 8')}</b></div>
@@ -117,6 +118,8 @@ export function SettingsPage() {
           <DayReasonsEditor />
         </section>
 
+        <DepartmentsEditor />
+
         {lite && (
           <section className="card pad stack" style={{ gap: 4 }}>
             <h2 style={{ marginBottom: 8 }}>{t('資料檔與備份')}</h2>
@@ -147,6 +150,52 @@ export function SettingsPage() {
           </section>
         )}
       </div>
+    </div>
+  );
+}
+
+/** 部門清單：新增、改名（改完離開欄位自動儲存）、刪除（還有員工的部門不能刪除） */
+function DepartmentsEditor() {
+  const { st, src, run, confirm } = useApp();
+  const [text, setText] = useState('');
+  const add = async () => {
+    const v = text.trim();
+    if (!v) return;
+    if ((await run(() => src.saveDepartment(v), t('已新增部門「{0}」', [v]))) !== undefined) setText('');
+  };
+  const del = async (id: number, name: string) => {
+    if (await confirm({ title: t('刪除部門「{0}」？', [name]), ok: t('刪除'), danger: true })) await run(() => src.deleteDepartment(id), t('已刪除部門「{0}」', [name]));
+  };
+  return (
+    <section className="card pad stack" style={{ gap: 8 }}>
+      <h2 style={{ marginBottom: 4 }}>{t('部門')}</h2>
+      <span className="muted small">{t('員工主檔可以選擇部門（也可以留空）；請假總覽匯出時可依部門篩選。')}</span>
+      {st.departments.length === 0 && <span className="muted">{t('還沒有部門。')}</span>}
+      {st.departments.map((d) => (
+        <DepartmentRow key={`${d.id}-${d.name}`} id={d.id} name={d.name} count={st.employees.filter((e) => e.departmentId === d.id).length} onDelete={() => del(d.id, d.name)} />
+      ))}
+      <form style={{ display: 'flex', gap: 8, marginTop: 4 }} onSubmit={(e) => { e.preventDefault(); add(); }}>
+        <input className="input" value={text} onChange={(e) => setText(e.target.value)} maxLength={30} placeholder={t('新增部門，例如：業務部')} disabled={src.readOnly} />
+        <button type="submit" className="btn sm" disabled={!text.trim() || src.readOnly}>{t('新增')}</button>
+      </form>
+    </section>
+  );
+}
+
+function DepartmentRow({ id, name, count, onDelete }: { id: number; name: string; count: number; onDelete: () => void }) {
+  const { src, run } = useApp();
+  const [v, setV] = useState(name);
+  const commit = async () => {
+    const n = v.trim();
+    if (n === name) return;
+    if (!n || (await run(() => src.saveDepartment(n, id), t('已更新部門名稱'))) === undefined) setV(name);
+  };
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <input className="input" aria-label={t('部門名稱')} value={v} maxLength={30} disabled={src.readOnly}
+        onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+      <span className="muted small num" style={{ whiteSpace: 'nowrap' }}>{t('{0} 人', [count])}</span>
+      <button type="button" className="btn sm danger" aria-label={t('刪除部門「{0}」？', [name])} onClick={onDelete} disabled={src.readOnly}>{t('刪除')}</button>
     </div>
   );
 }

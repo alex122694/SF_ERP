@@ -275,7 +275,7 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
               {check.annual.deferred > 0 && <span className="muted small">{tr('含上期遞延 {0}（先扣）', [<Annual h={check.annual.deferredRemaining} />])}</span>}
             </div>
           )}
-          <p className="muted small" style={{ margin: '12px 0 0' }}>{t('扣除金額 = 時數 × 時薪 × (1 − 給薪比例)，四捨五入到整數元。')}</p>
+          <p className="muted small" style={{ margin: '12px 0 0' }}>{t('扣除金額 = 時數 × 時薪 × (1 − 給薪比例)；各筆加總後才四捨五入到整數元。')}</p>
         </aside>
       </div>
       {variant === 'page' && bar(<div className="stack" style={{ alignItems: 'center', gap: 10 }}>{confirmTag}{submitBtn}</div>)}

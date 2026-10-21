@@ -11,6 +11,7 @@ const NAV: { page: string; label: string; icon: IconName }[] = [
   { page: 'attendance', label: '出缺勤月曆', icon: 'calendar' },
   { page: 'employees', label: '員工', icon: 'users' },
   { page: 'overview', label: '請假總覽', icon: 'chart' },
+  { page: 'memo', label: '備忘錄', icon: 'memo' },
   { page: 'settings', label: '制度與設定', icon: 'settings' },
 ];
 

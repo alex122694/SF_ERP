@@ -31,8 +31,9 @@ export function seedDemo(db: Db) {
   }
   holidays.push('2026-10-09');
   db.importCalendar(2026, holidays, '範例資料（週末＋10/9）');
-  const ids = EMPLOYEES.map(([name, gender, salary, hireDate]) =>
-    db.saveEmployee({ name, gender, salary, hireDate, annualBaseDate: '', leaveDate: '', email: '', phone: '' }));
+  const depts = ['業務部', '行政部', '技術部'].map((n) => db.saveDepartment(n));
+  const ids = EMPLOYEES.map(([name, gender, salary, hireDate], i) =>
+    db.saveEmployee({ name, gender, salary, hireDate, annualBaseDate: '', leaveDate: '', email: '', phone: '', departmentId: i % 4 === 3 ? '' : depts[i % 3] }));
   for (const [d, e, type, seg, reason = ''] of RECORDS) {
     const [start, end] = type === 'late' ? ['09:30', seg] : SEG[seg];
     db.saveLeave({ employeeId: ids[e], date: ymd(2026, 10, d), type, start, end, reason });

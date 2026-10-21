@@ -11,6 +11,7 @@ import { AttendancePage } from './pages/Attendance';
 import { EmployeesPage } from './pages/Employees';
 import { EmployeeDetailPage } from './pages/EmployeeDetail';
 import { OverviewPage } from './pages/Overview';
+import { MemoPage } from './pages/Memo';
 import { SettingsPage } from './pages/Settings';
 import { LangSwitch } from './ui/LangSwitch';
 import { errorText, t, tr, useLang } from './i18n';
@@ -58,6 +59,7 @@ function Router() {
     case 'attendance': return <AttendancePage />;
     case 'employees': return route.id ? <EmployeeDetailPage /> : <EmployeesPage />;
     case 'overview': return <OverviewPage />;
+    case 'memo': return <MemoPage />;
     case 'settings': return <SettingsPage />;
     default: return <HomePage />;
   }

@@ -1,11 +1,12 @@
 // 請假總覽（規格第 11 節）：每位員工一組，假別、時數、扣款逐列；姓名、本薪、總扣款金額跨列合併
 // 區間有兩種：月結區間（上月 23 日 ~ 本月 22 日）與指定區間；畫面與匯出 Excel 用同一個區間
-import { go, useApp } from '../ui/app-context';
+import { useState } from 'react';
+import { Modal, go, useApp } from '../ui/app-context';
 import { Icon } from '../ui/icons';
 import { Annual, LeaveAmount } from '../ui/annual-unit';
 import { amountText, downloadBlob, fmtHours, mdText, money, ntd, typeColor, typeName } from '../ui/format';
 import { typeOf } from '../ui/derive';
-import { isDateStr, settlementMonthOf, settlementRange, type LeaveType } from '../rules/rules';
+import { isDateStr, settlementMonthOf, settlementRange, sumDeduction, type Employee, type LeaveRecord, type LeaveType } from '../rules/rules';
 import { buildXlsx, XLSX_TYPE } from '../data/xlsxWrite';
 import { t } from '../i18n';
 
@@ -46,11 +47,11 @@ export function OverviewPage() {
       const parts = types
         .map((tp) => ({ tp, list: mine.filter((l) => l.type === tp.code) }))
         .filter((x) => x.list.length)
-        .map(({ tp, list }) => ({ tp, hours: list.reduce((s, l) => s + l.hours, 0), ded: list.reduce((s, l) => s + l.deduction, 0) }));
-      return { e, mine, parts, ded: mine.reduce((s, l) => s + l.deduction, 0) };
+        .map(({ tp, list }) => ({ tp, hours: list.reduce((s, l) => s + l.hours, 0), ded: sumDeduction(list.map((l) => l.deduction)) }));
+      return { e, mine, parts, ded: sumDeduction(mine.map((l) => l.deduction)) };
     });
   const totals = types.map((tp) => sumOf(recs, tp.code));
-  const dedTotal = rows.reduce((s, r) => s + r.ded, 0);
+  const dedTotal = sumDeduction(rows.flatMap((r) => r.mine.map((l) => l.deduction)));
   const genderText = (g: string) => (g === 'F' ? t('女') : t('男'));
   const partHours = (tp: LeaveType, hours: number) => amountText({ type: tp.code, hours });
 
@@ -58,19 +59,34 @@ export function OverviewPage() {
   // 只有一行時保留數字，Excel 才能加總
   const lines = (r: (typeof rows)[number], f: (p: (typeof r.parts)[number]) => string | number) =>
     (r.parts.length === 1 ? f(r.parts[0]) : r.parts.map(f).join('\n'));
-  const exportXlsx = () => {
+  const exportXlsx = (sel: typeof rows) => {
     const sheet = t('請假總覽');
+    const selDed = sumDeduction(sel.flatMap((r) => r.mine.map((l) => l.deduction)));
     const rowsOut = [
       [t('姓名'), t('性別'), t('本薪'), t('假別'), t('時數'), t('扣款金額'), t('總扣款金額')],
-      ...rows.map((r) => [
+      ...sel.map((r) => [
         r.e.name, genderText(r.e.gender), r.e.salary,
         lines(r, (p) => typeName(p.tp)), lines(r, (p) => partHours(p.tp, p.hours)), lines(r, (p) => p.ded), r.ded,
       ]),
-      [t('合計 {0} 人', [rows.length]), '', '', '', '', dedTotal, dedTotal],
+      [t('合計 {0} 人', [sel.length]), '', '', '', '', selDed, selDed],
     ];
     const bytes = buildXlsx(sheet, { rows: rowsOut, widths: [14, 8, 12, 14, 12, 12, 14], boldRows: [0, rowsOut.length - 1] });
     downloadBlob(`${sheet}_${from}~${to}.xlsx`, new Blob([bytes], { type: XLSX_TYPE }));
   };
+  // 請假明細總覽：一筆紀錄一列（姓名、部門、日期、假別、時間、時數），依員工、日期排序
+  const exportDetail = (sel: typeof rows) => {
+    const sheet = t('請假明細總覽');
+    const deptOf = (id: number | null) => st.departments.find((d) => d.id === id)?.name ?? '';
+    const list = sel.flatMap((r) => r.mine.map((l) => ({ r, l })));
+    const rowsOut = [
+      [t('姓名'), t('部門'), t('日期'), t('假別'), t('時間'), t('時數')],
+      ...list.map(({ r, l }) => [r.e.name, deptOf(r.e.departmentId), l.date, typeName(typeOf(st, l.type)), `${l.start}–${l.end}`, amountText(l)]),
+      [t('合計 {0} 筆', [list.length]), '', '', '', '', ''],
+    ];
+    const bytes = buildXlsx(sheet, { rows: rowsOut, widths: [14, 14, 14, 12, 14, 12], boldRows: [0, rowsOut.length - 1] });
+    downloadBlob(`${sheet}_${from}~${to}.xlsx`, new Blob([bytes], { type: XLSX_TYPE }));
+  };
+  const [exporting, setExporting] = useState(false);
 
   return (
     <div className="page">
@@ -103,7 +119,7 @@ export function OverviewPage() {
             <input className="input" type="date" style={{ width: 'auto' }} value={to} onChange={(e) => nav({ to: e.target.value })} />
           </label>
         </>}
-        <button type="button" className="btn primary" onClick={exportXlsx} disabled={!rangeOk}><Icon name="download" size={18} stroke={1.8} />{t('匯出 Excel')}</button>
+        <button type="button" className="btn primary" onClick={() => setExporting(true)} disabled={!rangeOk}><Icon name="download" size={18} stroke={1.8} />{t('匯出 Excel')}</button>
       </div>
 
       {rangeOk
@@ -192,6 +208,76 @@ export function OverviewPage() {
           </table>
         )}
       </div>
+      {exporting && (
+        <ExportDialog rows={rows} onClose={() => setExporting(false)}
+          onExport={(kind, sel) => { (kind === 'amount' ? exportXlsx : exportDetail)(sel); setExporting(false); }} />
+      )}
     </div>
+  );
+}
+
+type Row = { e: Employee; mine: LeaveRecord[] };
+
+/** 匯出 Excel：選匯出內容（金額試算總覽／請假明細總覽）與對象（全部、勾選部門、勾選人員） */
+function ExportDialog<R extends Row>({ rows, onClose, onExport }: { rows: R[]; onClose: () => void; onExport: (kind: 'amount' | 'detail', sel: R[]) => void }) {
+  const { st } = useApp();
+  const [kind, setKind] = useState<'amount' | 'detail'>('amount');
+  const [scope, setScope] = useState<'all' | 'dept' | 'person'>('all');
+  const [depts, setDepts] = useState<Set<number>>(new Set()); // 0＝未設定部門
+  const [people, setPeople] = useState<Set<number>>(new Set());
+  const toggle = <T,>(set: Set<T>, v: T, fn: (s: Set<T>) => void) => { const n = new Set(set); if (!n.delete(v)) n.add(v); fn(n); };
+
+  const deptOf = (r: R) => r.e.departmentId ?? 0;
+  const sel = scope === 'all' ? rows : scope === 'dept' ? rows.filter((r) => depts.has(deptOf(r))) : rows.filter((r) => people.has(r.e.id));
+  const deptList = [...st.departments.map((d) => ({ id: d.id, name: d.name })), ...(rows.some((r) => deptOf(r) === 0) ? [{ id: 0, name: t('未設定部門') }] : [])]
+    .map((d) => ({ ...d, n: rows.filter((r) => deptOf(r) === d.id).length }))
+    .filter((d) => d.n > 0);
+  const records = sel.reduce((s, r) => s + r.mine.length, 0);
+  const radio = <V extends string>(name: string, value: V, cur: V, set: (v: V) => void, label: string, hint?: string) => (
+    <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
+      <input type="radio" name={name} checked={cur === value} onChange={() => set(value)} style={{ marginTop: 4 }} />
+      <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}><b>{label}</b>{hint && <span className="muted small">{hint}</span>}</span>
+    </label>
+  );
+  const checks = (items: { id: number; label: string }[], set: Set<number>, fn: (s: Set<number>) => void) => (
+    <div className="stack" style={{ gap: 6 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" className="btn sm" onClick={() => fn(new Set(items.map((i) => i.id)))}>{t('全選')}</button>
+        <button type="button" className="btn sm" onClick={() => fn(new Set())}>{t('清除')}</button>
+      </div>
+      <div style={{ display: 'flex', gap: '6px 16px', flexWrap: 'wrap', maxHeight: 180, overflow: 'auto' }}>
+        {items.map((i) => (
+          <label key={i.id} style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
+            <input type="checkbox" checked={set.has(i.id)} onChange={() => toggle(set, i.id, fn)} />{i.label}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <Modal label={t('匯出 Excel')} onClose={onClose}>
+      <div className="dlg-body">
+        <h2>{t('匯出 Excel')}</h2>
+        <div className="stack" style={{ gap: 10 }}>
+          <b>{t('匯出內容')}</b>
+          {radio('kind', 'amount', kind, setKind, t('金額試算總覽'), t('每位員工一列：假別、時數、扣款金額與總扣款金額'))}
+          {radio('kind', 'detail', kind, setKind, t('請假明細總覽'), t('一筆紀錄一列：姓名、部門、日期、假別、時間、時數'))}
+        </div>
+        <div className="stack" style={{ gap: 10 }}>
+          <b>{t('匯出對象')}</b>
+          {radio('scope', 'all', scope, setScope, t('全部員工'))}
+          {radio('scope', 'dept', scope, setScope, t('勾選部門'))}
+          {scope === 'dept' && (deptList.length ? checks(deptList.map((d) => ({ id: d.id, label: t('{0}（{1} 人）', [d.name, d.n]) })), depts, setDepts) : <span className="muted small">{t('還沒有部門。')}</span>)}
+          {radio('scope', 'person', scope, setScope, t('勾選人員'))}
+          {scope === 'person' && checks(rows.map((r) => ({ id: r.e.id, label: r.e.name })), people, setPeople)}
+        </div>
+        <span className="muted small">{t('將匯出 {0} 位員工', [sel.length])}{kind === 'detail' ? t('、{0} 筆紀錄', [records]) : ''}</span>
+        <div className="dlg-actions">
+          <button type="button" className="btn" onClick={onClose}>{t('取消')}</button>
+          <button type="button" className="btn primary" disabled={sel.length === 0} onClick={() => onExport(kind, sel)}><Icon name="download" size={18} stroke={1.8} />{t('匯出')}</button>
+        </div>
+      </div>
+    </Modal>
   );
 }

@@ -14,6 +14,12 @@ export interface Employee {
   leaveDate: string | null;
   email: string;
   phone: string;
+  departmentId: number | null; // 部門（可為空）
+}
+
+export interface Department {
+  id: number;
+  name: string;
 }
 
 export interface LeaveRecord {
@@ -60,7 +66,9 @@ export interface Settlement {
 // ---------- 工時 ----------
 
 export const WORK_PERIODS: [string, string][] = [['09:30', '12:00'], ['13:30', '18:30']];
-export const HOURS_PER_DAY = 8; // 日數與時數換算基準（實際工時 7.5h）
+/** 實際午休 12:00～13:30，只扣 1 小時，多出的 30 分鐘列為午休 bonus：13:30～14:00 這半小時以 1 小時計 */
+export const LUNCH_BONUS: [string, string] = ['13:30', '14:00'];
+export const HOURS_PER_DAY = 8; // 日數與時數換算基準；全天 8h = 上午 2.5h + 下午 5.5h（含午休 bonus）
 export const DAYS_PER_MONTH = 30;
 
 export const SEGMENTS = [
@@ -91,20 +99,29 @@ export const fromMin = (n: number) => `${String(Math.floor(n / 60)).padStart(2, 
 export const TIME_SLOTS: string[] = [];
 for (let n = toMin('09:30'); n <= toMin('18:30'); n += 30) TIME_SLOTS.push(fromMin(n));
 
-/** 請假時段與工作時段（扣午休）重疊的分鐘數 */
+/** 請假時段與工作時段（扣午休）重疊的分鐘數；午休 bonus 時段重複計算一次，所以上午 150、下午 330、全天 480 */
 export function leaveMinutes(start: string, end: string): number {
   const s = toMin(start), e = toMin(end);
   let min = 0;
-  for (const [ps, pe] of WORK_PERIODS) min += Math.max(0, Math.min(e, toMin(pe)) - Math.max(s, toMin(ps)));
+  for (const [ps, pe] of [...WORK_PERIODS, LUNCH_BONUS]) min += Math.max(0, Math.min(e, toMin(pe)) - Math.max(s, toMin(ps)));
   return min;
 }
 
 const pct = (ratio: number) => Math.round(ratio * 100);
 
-/** 扣除金額 = 時數 × (薪資 ÷ 30 ÷ 8) × (1 − 給薪比例)，四捨五入到整數元；以整數分鐘計算避免浮點誤差 */
+/**
+ * 一筆紀錄的扣除金額 = 時數 × (薪資 ÷ 30 ÷ 8) × (1 − 給薪比例)，不取整（保留小數，存檔也存這個值）；以整數分鐘計算避免浮點誤差。
+ * 金額一律逐筆加總後才取整一次（sumDeduction），畫面上單筆顯示用 roundYuan
+ */
 export function deduction(minutes: number, salary: number, payRatio: number): number {
-  return Math.round((minutes * salary * (100 - pct(payRatio))) / (60 * DAYS_PER_MONTH * HOURS_PER_DAY * 100));
+  return (minutes * salary * (100 - pct(payRatio))) / (60 * DAYS_PER_MONTH * HOURS_PER_DAY * 100);
 }
+
+/** 四捨五入到整數元（先修掉浮點誤差，.5 才不會被算成 .4999999） */
+export const roundYuan = (n: number) => Math.round(Number(n.toFixed(6)));
+
+/** 逐筆加總（不取整）後一次取整 */
+export const sumDeduction = (amounts: number[]) => roundYuan(amounts.reduce((s, n) => s + n, 0));
 
 /** 時數換錢 = 時數 × 時薪，四捨五入到整數元 */
 export const cashOut = (hours: number, salary: number) =>
@@ -121,11 +138,12 @@ export const DEFAULT_LEAVE_TYPES: LeaveType[] = [
   { code: 'menstrual', name: '生理假', payRatio: 0.5, unitMinutes: 30, segmentOnly: false, femaleOnly: true, maxMinutes: null, confirmTwice: false, color: 'menstrual', sortOrder: 4 },
   { code: 'official', name: '公假', payRatio: 1, unitMinutes: 30, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: false, color: 'official', sortOrder: 5 },
   { code: 'late', name: '遲到', payRatio: 0, unitMinutes: 1, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: false, color: 'late', sortOrder: 6 },
+  { code: 'absent', name: '曠職', payRatio: 0, unitMinutes: 30, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: true, color: 'absent', sortOrder: 7 },
 ];
 
 export const LEAVE_TYPE_NOTES: Record<string, string> = {
   annual: '以半天為單位：上午、下午各算半天（4 h），全天算 1 天（8 h）；剩餘額度不足不能登記',
-  personal: '沒有請假的缺勤，以事假登記',
+  absent: '沒有請假也沒有到班的缺勤；月曆上方有曠職快速導覽列，補請假時可快速找到並修改',
   menstrual: '限女性',
   late: '09:30 起算，依實際到班時間計分鐘（午休不算），沒有上限',
 };
@@ -435,6 +453,7 @@ export interface EmployeeInput {
   leaveDate: string;
   email: string;
   phone: string;
+  departmentId?: number | string | null; // 空字串或 null＝未設定
 }
 
 /** 回傳整理過的員工資料，或錯誤訊息 */
@@ -450,6 +469,7 @@ export function checkEmployee(
     leaveDate: input.leaveDate || null,
     email: String(input.email ?? '').trim(),
     phone: String(input.phone ?? '').trim(),
+    departmentId: input.departmentId ? Number(input.departmentId) : null,
   };
   const bad = (error: Msg) => ({ ok: false as const, error });
   if (!e.name) return bad(msg('請填寫姓名'));

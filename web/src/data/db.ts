@@ -4,7 +4,7 @@ import { MIGRATIONS } from './schema';
 import { UserError, msg } from '../rules/msg';
 import {
   buildSettlement, checkEmployee, checkLeave, settlementsDue, ymd, daysInMonth,
-  type Calendars, type Employee, type EmployeeInput, type LeaveInput, type LeaveRecord, type LeaveType,
+  type Calendars, type Department, type Employee, type EmployeeInput, type LeaveInput, type LeaveRecord, type LeaveType,
   type Settlement, type SettlementAction,
 } from '../rules/rules';
 
@@ -26,6 +26,7 @@ export interface DayInfo {
 
 export interface State {
   employees: Employee[];
+  departments: Department[];
   leaves: LeaveRecord[];
   leaveTypes: LeaveType[];
   settlements: Settlement[];
@@ -141,8 +142,9 @@ export class Db {
     const employees = this.rows('SELECT * FROM employee ORDER BY hire_date, id').map((r): Employee => ({
       id: Number(r.id), name: String(r.name), gender: r.gender as Employee['gender'], salary: Number(r.salary),
       hireDate: String(r.hire_date), annualBaseDate: String(r.annual_base_date), leaveDate: textOrNull(r.leave_date),
-      email: String(r.email), phone: String(r.phone),
+      email: String(r.email), phone: String(r.phone), departmentId: r.department_id == null ? null : Number(r.department_id),
     }));
+    const departments = this.rows('SELECT id, name FROM department ORDER BY id').map((r): Department => ({ id: Number(r.id), name: String(r.name) }));
     const leaves = this.rows('SELECT * FROM leave_record ORDER BY date, start_time, id').map((r): LeaveRecord => ({
       id: Number(r.id), employeeId: Number(r.employee_id), date: String(r.date), type: String(r.type_code),
       start: String(r.start_time), end: String(r.end_time), hours: Number(r.hours), deduction: Number(r.deduction),
@@ -168,7 +170,7 @@ export class Db {
     }
     const settings: Record<string, string> = {};
     for (const r of this.rows('SELECT key, value FROM app_setting')) settings[String(r.key)] = String(r.value);
-    return { employees, leaves, leaveTypes, settlements, calendarYears, days, settings };
+    return { employees, departments, leaves, leaveTypes, settlements, calendarYears, days, settings };
   }
 
   // ---------- 員工 ----------
@@ -179,15 +181,40 @@ export class Db {
     const r = checkEmployee(input, st.leaves, id);
     if (!r.ok) throw new UserError(r.error);
     const e = r.value;
+    if (e.departmentId != null && !st.departments.some((d) => d.id === e.departmentId)) throw new UserError(msg('找不到部門'));
     const now = localStamp();
     if (id == null) {
-      this.run(`INSERT INTO employee (name, gender, salary, hire_date, annual_base_date, leave_date, email, phone, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [e.name, e.gender, e.salary, e.hireDate, e.annualBaseDate, e.leaveDate, e.email, e.phone, now, now]);
+      this.run(`INSERT INTO employee (name, gender, salary, hire_date, annual_base_date, leave_date, email, phone, department_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [e.name, e.gender, e.salary, e.hireDate, e.annualBaseDate, e.leaveDate, e.email, e.phone, e.departmentId, now, now]);
       return this.lastId();
     }
-    this.run(`UPDATE employee SET name = ?, gender = ?, salary = ?, hire_date = ?, annual_base_date = ?, leave_date = ?, email = ?, phone = ?, updated_at = ?
-      WHERE id = ?`, [e.name, e.gender, e.salary, e.hireDate, e.annualBaseDate, e.leaveDate, e.email, e.phone, now, id]);
+    this.run(`UPDATE employee SET name = ?, gender = ?, salary = ?, hire_date = ?, annual_base_date = ?, leave_date = ?, email = ?, phone = ?, department_id = ?, updated_at = ?
+      WHERE id = ?`, [e.name, e.gender, e.salary, e.hireDate, e.annualBaseDate, e.leaveDate, e.email, e.phone, e.departmentId, now, id]);
     return id;
+  }
+
+  // ---------- 部門 ----------
+
+  saveDepartment(name: string, id?: number): number {
+    const n = String(name ?? '').trim();
+    if (!n) throw new UserError(msg('請填寫部門名稱'));
+    if (n.length > 30) throw new UserError(msg('部門名稱最多 30 字'));
+    const st = this.state();
+    if (id != null && !st.departments.some((d) => d.id === id)) throw new UserError(msg('找不到部門'));
+    if (st.departments.some((d) => d.name === n && d.id !== id)) throw new UserError(msg('已經有「{0}」這個部門', [n]));
+    if (id == null) {
+      this.run('INSERT INTO department (name) VALUES (?)', [n]);
+      return this.lastId();
+    }
+    this.run('UPDATE department SET name = ? WHERE id = ?', [n, id]);
+    return id;
+  }
+
+  /** 還有員工使用的部門不能刪除（先把員工改到別的部門或清空） */
+  deleteDepartment(id: number) {
+    const n = Number(this.rows('SELECT count(*) AS n FROM employee WHERE department_id = ?', [id])[0].n);
+    if (n) throw new UserError(msg('還有 {0} 位員工在這個部門，不能刪除；請先調整他們的部門', [n]));
+    this.run('DELETE FROM department WHERE id = ?', [id]);
   }
 
   /** 只能刪除沒有任何紀錄的員工（例如建錯的資料）；有出缺勤或特休處理紀錄的員工以離職日處理，保留歷史與金額 */

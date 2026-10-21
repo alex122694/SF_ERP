@@ -6,6 +6,7 @@ const paths: Record<string, ReactNode> = {
   quick: <><rect x="3" y="3" width="14" height="14" rx="3" /><path d="M10 7v6M7 10h6" /></>,
   calendar: <><rect x="3" y="4" width="14" height="13" rx="2" /><path d="M3 8h14M7 2.5v3M13 2.5v3" /></>,
   users: <><circle cx="8" cy="7" r="3" /><path d="M2.5 17c0-3 2.5-5 5.5-5s5.5 2 5.5 5M13.5 4.2a3 3 0 0 1 0 5.6M17.5 17c0-2.2-1-3.8-2.8-4.6" /></>,
+  memo: <><path d="M5 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M7 7.5h6M7 10.5h6M7 13.5h3.5" /></>,
   chart: <path d="M4 16V10M8 16V5M12 16v-4M16 16V8" />,
   settings: <><path d="M4 6h8M15 6h1M4 14h1M8 14h8" /><circle cx="13.5" cy="6" r="1.8" /><circle cx="6.5" cy="14" r="1.8" /></>,
   db: <><ellipse cx="10" cy="5" rx="6" ry="2.5" /><path d="M4 5v10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V5M4 10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5" /></>,

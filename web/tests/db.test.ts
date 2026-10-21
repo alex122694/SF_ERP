@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import { Db, UserError, calendarsOf } from '../src/data/db';
 import { msg } from '../src/rules/msg';
-import { checkLeaveDays, expandLeaveRange } from '../src/rules/rules';
+import { checkLeaveDays, expandLeaveRange, sumDeduction } from '../src/rules/rules';
 import { MIGRATIONS } from '../src/data/schema';
 import { parseGovCalendar } from '../src/data/calendarXlsx';
 import { importLegacyJson } from '../src/data/legacyImport';
@@ -70,15 +70,15 @@ describe('手動改放假日／上班日', () => {
 describe('Db', () => {
   it('建立後有預設假別與設定', () => {
     const st = Db.open(SQL).state();
-    expect(st.leaveTypes.map((t) => t.code)).toEqual(['annual', 'personal', 'sick', 'menstrual', 'official', 'late']);
+    expect(st.leaveTypes.map((t) => t.code)).toEqual(['annual', 'personal', 'sick', 'menstrual', 'official', 'late', 'absent']);
     expect(st.settings.annual_remind_days).toBe('30');
   });
   it('登記、編輯、刪除紀錄，扣款於存檔時算好', async () => {
     const { db, id } = await seeded();
     const lid = db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'sick', start: '13:30', end: '18:30', reason: ' 看診 ' });
-    expect(db.state().leaves[0]).toMatchObject({ id: lid, hours: 5, deduction: 375, reason: '看診' });
+    expect(db.state().leaves[0]).toMatchObject({ id: lid, hours: 5.5, deduction: 412.5, reason: '看診' });
     db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'personal', start: '13:30', end: '14:30', reason: '' }, lid);
-    expect(db.state().leaves[0]).toMatchObject({ type: 'personal', hours: 1, deduction: 150 });
+    expect(db.state().leaves[0]).toMatchObject({ type: 'personal', hours: 1.5, deduction: 225 });
     expect(() => db.saveLeave({ employeeId: id, date: '2026-10-18', type: 'sick', start: '09:30', end: '12:00', reason: '' })).toThrow(UserError);
     db.deleteLeave(lid);
     expect(db.state().leaves).toHaveLength(0);
@@ -90,7 +90,7 @@ describe('Db', () => {
     expect(exp.skipped).toEqual(['2026-10-09', '2026-10-10', '2026-10-11']);
     expect(exp.days.map((d) => `${d.date} ${d.start}-${d.end}`)).toEqual(['2026-10-08 13:30-18:30', '2026-10-12 09:30-18:30', '2026-10-13 09:30-12:00']);
     expect(db.saveLeaves(exp.days)).toHaveLength(3);
-    expect(db.state().leaves.map((l) => l.hours)).toEqual([5, 7.5, 2.5]);
+    expect(db.state().leaves.map((l) => l.hours)).toEqual([5.5, 8, 2.5]);
   });
   it('多日請假有一天不行就整批退回，並指出是哪一天', async () => {
     const { db, id } = await seeded();
@@ -108,6 +108,54 @@ describe('Db', () => {
     const many = expandLeaveRange({ employeeId: id, date: '2026-10-12', type: 'annual', start: '09:30', end: '18:30', reason: '' }, '2027-01-31', { start: '09:30', end: '18:30' }, ctx.calendars);
     expect(many.error?.toString()).toBe('一次最多登記 92 天');
     expect(expandLeaveRange({ employeeId: id, date: '2026-10-12', type: 'annual', start: '09:30', end: '18:30', reason: '' }, '2026-10-11', { start: '09:30', end: '18:30' }, ctx.calendars).error?.toString()).toBe('結束日不能早於起始日');
+  });
+  it('曠職：不給薪、全天 8 小時，單筆不取整、加總後才取整一次', async () => {
+    const { db, id } = await seeded();
+    db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'absent', start: '09:30', end: '18:30', reason: '' });
+    expect(db.state().leaves[0]).toMatchObject({ type: 'absent', hours: 8, deduction: 1200 });
+    const emp2 = db.saveEmployee({ ...empInput, name: '甲', salary: 42000 });
+    for (const d of ['2026-10-19', '2026-10-20', '2026-10-21']) db.saveLeave({ employeeId: emp2, date: d, type: 'late', start: '09:30', end: '09:35', reason: '' });
+    const lates = db.state().leaves.filter((l) => l.employeeId === emp2).map((l) => l.deduction);
+    expect(lates.every((x) => Math.abs(x - 14.58333) < 1e-4)).toBe(true);
+    expect(sumDeduction(lates)).toBe(44);
+  });
+  it('升級時補上曠職假別，既有紀錄的扣除金額依時數與薪資重算（不取整）', async () => {
+    const old = new SQL.Database();
+    for (let v = 0; v < 6; v++) old.exec(MIGRATIONS[v]);
+    old.exec("DELETE FROM leave_type WHERE code = 'absent'");
+    old.exec('PRAGMA user_version = 6');
+    old.exec(`INSERT INTO employee (name, gender, salary, hire_date, annual_base_date, created_at, updated_at) VALUES ('甲', 'F', 42000, '2021-03-01', '2021-03-01', '', '')`);
+    old.exec(`INSERT INTO leave_record (employee_id, date, type_code, start_time, end_time, hours, deduction, salary, created_at, updated_at) VALUES (1, '2026-10-19', 'late', '09:30', '09:35', 0.0833333333, 15, 42000, '', '')`);
+    const st = Db.open(SQL, old.export()).state();
+    expect(st.leaveTypes.find((t) => t.code === 'absent')).toMatchObject({ name: '曠職', payRatio: 0, unitMinutes: 30, confirmTwice: true });
+    expect(st.leaves[0].deduction).toBeCloseTo(14.58333, 4);
+  });
+  it('部門：新增、改名、員工可選可留空，還有員工的部門不能刪除', async () => {
+    const { db, id } = await seeded();
+    expect(db.state().employees[0].departmentId).toBeNull();
+    const sales = db.saveDepartment(' 業務部 ');
+    expect(db.state().departments).toEqual([{ id: sales, name: '業務部' }]);
+    expect(() => db.saveDepartment('業務部')).toThrow('已經有「業務部」這個部門');
+    expect(() => db.saveDepartment('  ')).toThrow('請填寫部門名稱');
+    db.saveEmployee({ ...empInput, departmentId: String(sales) }, id);
+    expect(db.state().employees[0].departmentId).toBe(sales);
+    expect(() => db.saveEmployee({ ...empInput, departmentId: 999 }, id)).toThrow('找不到部門');
+    db.saveDepartment('銷售部', sales);
+    expect(db.state().departments[0].name).toBe('銷售部');
+    expect(() => db.deleteDepartment(sales)).toThrow('還有 1 位員工');
+    db.saveEmployee({ ...empInput, departmentId: '' }, id);
+    expect(db.state().employees[0].departmentId).toBeNull();
+    db.deleteDepartment(sales);
+    expect(db.state().departments).toEqual([]);
+  });
+  it('升級時新增部門資料表，既有員工的部門為空', async () => {
+    const old = new SQL.Database();
+    for (let v = 0; v < 7; v++) old.exec(MIGRATIONS[v]);
+    old.exec('PRAGMA user_version = 7');
+    old.exec(`INSERT INTO employee (name, gender, salary, hire_date, annual_base_date, created_at, updated_at) VALUES ('甲', 'F', 42000, '2021-03-01', '2021-03-01', '', '')`);
+    const st = Db.open(SQL, old.export()).state();
+    expect(st.departments).toEqual([]);
+    expect(st.employees[0].departmentId).toBeNull();
   });
   it('有紀錄的日子不能改為放假日', async () => {
     const { db, id } = await seeded();
@@ -142,7 +190,8 @@ describe('Db', () => {
     old.exec('PRAGMA user_version = 4');
     old.exec(`INSERT INTO employee (name, gender, salary, hire_date, annual_base_date, created_at, updated_at) VALUES ('甲', 'F', 42000, '2021-03-01', '2021-03-01', '', '')`);
     old.exec(`INSERT INTO leave_record (employee_id, date, type_code, start_time, end_time, hours, deduction, created_at, updated_at) VALUES (1, '2026-10-19', 'sick', '09:30', '12:00', 2.5, 219, '', '')`);
-    expect(Db.open(SQL, old.export()).state().leaves[0]).toMatchObject({ salary: 42000, deduction: 219 });
+    expect(Db.open(SQL, old.export()).state().leaves[0]).toMatchObject({ salary: 42000 });
+    expect(Db.open(SQL, old.export()).state().leaves[0].deduction).toBeCloseTo(218.75, 6);
   });
   it('特休換錢後不能再登記該期特休', async () => {
     const { db, id } = await seeded();
@@ -202,7 +251,7 @@ describe('舊版 db.json 匯入', () => {
     const db = Db.open(SQL);
     const bad = { ...legacy, leaves: [{ ...legacy.leaves[0], hours: 99, amount: 99999 }, { id: 3, empId: 1, date: '2026-10-20', type: 'annual', start: '09:30', end: '12:00', hours: 2.5, amount: 0 }] };
     importLegacyJson(db, JSON.stringify(bad));
-    expect(db.state().leaves.map((l) => [l.hours, l.deduction])).toEqual([[5, 375], [4, 0]]);
+    expect(db.state().leaves.map((l) => [l.hours, l.deduction])).toEqual([[5.5, 412.5], [4, 0]]);
   });
   it('格式錯誤的紀錄整批取消', () => {
     const cases = [
