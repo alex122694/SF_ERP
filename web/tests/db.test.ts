@@ -90,7 +90,7 @@ describe('Db', () => {
     expect(exp.skipped).toEqual(['2026-10-09', '2026-10-10', '2026-10-11']);
     expect(exp.days.map((d) => `${d.date} ${d.start}-${d.end}`)).toEqual(['2026-10-08 13:30-18:30', '2026-10-12 09:30-18:30', '2026-10-13 09:30-12:00']);
     expect(db.saveLeaves(exp.days)).toHaveLength(3);
-    expect(db.state().leaves.map((l) => l.hours)).toEqual([5, 7.5, 2.5]);
+    expect(db.state().leaves.map((l) => l.hours)).toEqual([5, 8, 2.5]);
   });
   it('多日請假有一天不行就整批退回，並指出是哪一天', async () => {
     const { db, id } = await seeded();

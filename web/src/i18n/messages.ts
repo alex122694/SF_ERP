@@ -45,13 +45,9 @@ export const M: Record<string, [string, string, string]> = {
   '分': ["min", "分", "분"],
   '{0} 分': ["{0} min", "{0} 分", "{0}분"],
   '天': ["days", "日", "일"],
-  '小時': ["hours", "時間", "시간"],
   '{0} 天': ["{0} {0|day|days}", "{0} 日", "{0}일"],
   '{0} 小時': ["{0} {0|hour|hours}", "{0} 時間", "{0}시간"],
   '{0} 分鐘': ["{0} min", "{0} 分", "{0}분"],
-  '點一下切換天／小時': ["Click to switch days / hours", "クリックで日／時間を切り替え", "클릭하여 일/시간 전환"],
-  '天，點一下改用小時顯示': ["Days — click to show hours", "日（クリックで時間表示）", "일 — 클릭하면 시간으로 표시"],
-  '小時，點一下改用天顯示': ["Hours — click to show days", "時間（クリックで日表示）", "시간 — 클릭하면 일로 표시"],
   '{0} 年 {1} 月': ["{1}/{0}", "{0}年{1}月", "{0}년 {1}월"],
   '{0} 月': ["{0}", "{0}月", "{0}월"],
   '{0} 年 {1} 個月': ["{0} yr {1} mo", "{0}年{1}か月", "{0}년 {1}개월"],
@@ -102,7 +98,8 @@ export const M: Record<string, [string, string, string]> = {
   '以半天為單位：上午、下午各算半天（4 h），全天算 1 天（8 h）；剩餘額度不足不能登記': ["Taken in half days: morning or afternoon counts as half a day (4 h), a full day as 1 day (8 h). Cannot be recorded if the balance is insufficient.", "半日単位：午前・午後はそれぞれ半日（4 h）、終日は 1 日（8 h）。残日数が足りない場合は登録できません。", "반일 단위: 오전·오후는 각각 반일(4 h), 종일은 1일(8 h). 잔여 일수가 부족하면 등록할 수 없습니다."],
   '沒有請假的缺勤，以事假登記': ["Absence without leave is recorded as personal leave", "無届けの欠勤は私用休暇として登録", "무단 결근은 개인 휴가로 등록"],
   '限女性': ["Women only", "女性のみ", "여성만"],
-  '09:30 起算，依實際到班時間計分鐘（午休不算），沒有上限': ["Counted in minutes from 09:30 to the actual arrival time (lunch break excluded), with no upper limit", "09:30 から実際の出社時刻まで分単位で計算（昼休みは除く）、上限なし", "09:30부터 실제 출근 시간까지 분 단위로 계산(점심시간 제외), 상한 없음"],
+  '09:30 起算，依實際到班時間計分鐘，最晚到 12:00（12:00 以後請登記上午請假）': ["Counted in minutes from 09:30 to the actual arrival time, up to 12:00 at the latest (arriving after 12:00 should be recorded as morning leave)", "09:30 から実際の出社時刻まで分単位で計算、最長 12:00 まで（12:00 以降は午前休として登録）", "09:30부터 실제 출근 시간까지 분 단위로 계산, 최대 12:00까지(12:00 이후는 오전 휴가로 등록)"],
+  '{0} 當天已有{1}紀錄，同一天同一假別只能登記一筆': ["{0} already has a {1} record on that day; only one record per leave type per day is allowed", "{0} はその日すでに{1}の記録があります。同じ日・同じ休暇種別は 1 件のみ登録できます", "{0}은(는) 해당 날짜에 이미 {1} 기록이 있습니다. 같은 날 같은 휴가 종류는 한 건만 등록할 수 있습니다"],
 
   // ---------- 開啟資料夾 ----------
   '無法開啟資料夾：{0}': ["Could not open the folder: {0}", "フォルダーを開けません：{0}", "폴더를 열 수 없습니다: {0}"],

@@ -60,13 +60,23 @@ describe('checkLeave', () => {
     const r = checkLeave(input(), ctx());
     expect(r).toMatchObject({ ok: true, hours: 5, deduction: 375 });
   });
-  it('遲到依實際分鐘扣款，沒有上限；午休不算，最晚 18:30', () => {
+  it('遲到依實際分鐘扣款，最晚到 12:00', () => {
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '09:42', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 12, deduction: 30 });
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '10:01', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 31 });
-    expect(checkLeave(input({ type: 'late', start: '09:30', end: '14:00', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 150 + 30 });
-    expect(checkLeave(input({ type: 'late', start: '09:30', end: '18:30', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 450 });
-    expect(checkLeave(input({ type: 'late', start: '09:30', end: '18:31', employeeId: 1 }), ctx()).ok).toBe(false);
+    expect(checkLeave(input({ type: 'late', start: '09:30', end: '12:00', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 150 });
+    expect(checkLeave(input({ type: 'late', start: '09:30', end: '12:01', employeeId: 1 }), ctx()).ok).toBe(false);
+    expect(checkLeave(input({ type: 'late', start: '09:30', end: '14:00', employeeId: 1 }), ctx()).ok).toBe(false);
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '09:30', employeeId: 1 }), ctx()).ok).toBe(false);
+  });
+  it('請全天直接算 1 天 8h；非全天照實際時數', () => {
+    expect(checkLeave(input({ start: '09:30', end: '18:30' }), ctx())).toMatchObject({ ok: true, hours: 8, deduction: 600 });
+    expect(checkLeave(input({ start: '09:30', end: '12:00' }), ctx())).toMatchObject({ ok: true, hours: 2.5, deduction: 188 });
+    expect(checkLeave(input({ start: '09:30', end: '18:00' }), ctx())).toMatchObject({ ok: true, hours: 7 });
+  });
+  it('同人同天同假別只能一筆，不同假別可以', () => {
+    const c = ctx({ leaves: [rec('2026-10-19', 'personal', '09:30', '12:00')] });
+    expect(errOf(checkLeave(input({ type: 'personal', start: '13:30', end: '18:30' }), c))).toContain('只能登記一筆');
+    expect(checkLeave(input({ type: 'sick', start: '13:30', end: '18:30' }), c).ok).toBe(true);
   });
   it('放假日、未匯入年度不能登記', () => {
     expect(errOf(checkLeave(input({ date: '2026-10-09' }), ctx()))).toContain('放假日');
