@@ -99,4 +99,10 @@ UPDATE leave_type SET unit_minutes = 240 WHERE code = 'annual';
 ALTER TABLE calendar_day ADD COLUMN override_reason TEXT;
 INSERT INTO app_setting VALUES ('day_reasons', '["颱風停班","公司自訂休假","補班","公司活動"]');
 `,
+  // 每筆紀錄記下登記當時的月本薪，編輯舊紀錄時以此重算扣款（不回溯調薪）；
+  // 既有紀錄沒有當時薪資的資料，以升級時的薪資補上
+  `
+ALTER TABLE leave_record ADD COLUMN salary INTEGER NOT NULL DEFAULT 0;
+UPDATE leave_record SET salary = (SELECT e.salary FROM employee e WHERE e.id = leave_record.employee_id);
+`,
 ];

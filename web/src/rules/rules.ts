@@ -25,6 +25,7 @@ export interface LeaveRecord {
   end: string;
   hours: number;
   deduction: number;
+  salary: number; // 登記當時的月本薪；扣款以此計算，之後調薪不影響這筆
   reason: string;
 }
 
@@ -303,20 +304,26 @@ export interface LeaveContext {
 }
 
 export type LeaveCheck =
-  | { ok: true; minutes: number; hours: number; deduction: number; annual: AnnualStatus | null }
-  | { ok: false; error: Msg; minutes: number; hours: number; deduction: number; annual: AnnualStatus | null };
+  | { ok: true; minutes: number; hours: number; deduction: number; salary: number; annual: AnnualStatus | null }
+  | { ok: false; error: Msg; minutes: number; hours: number; deduction: number; salary: number; annual: AnnualStatus | null };
 
-/** 存檔前檢查；同一函式也給畫面即時試算用。existing 為編輯中的那一筆（原本的 id 與日期） */
-export function checkLeave(input: LeaveInput, ctx: LeaveContext, existing?: { id: number; date: string }): LeaveCheck {
+/**
+ * 存檔前檢查；同一函式也給畫面即時試算用。existing 為編輯中的那一筆（原本的 id、日期、員工與當時薪資）。
+ * 編輯時沿用該筆登記當時的薪資計算扣款；改成別的員工才用該員工目前的薪資。
+ */
+export function checkLeave(
+  input: LeaveInput, ctx: LeaveContext, existing?: { id: number; date: string; employeeId?: number; salary?: number },
+): LeaveCheck {
   const existingId = existing?.id;
   const emp = ctx.employees.find((e) => e.id === input.employeeId);
   const t = ctx.leaveTypes.find((x) => x.code === input.type);
   const timesOk = isTimeStr(input.start) && isTimeStr(input.end);
   const minutes = !timesOk || !t ? 0 : recordMinutes(t.code, input.start, input.end);
   const hours = minutes / 60;
-  const ded = emp && t ? deduction(minutes, emp.salary, t.payRatio) : 0;
+  const salary = !emp ? 0 : existing?.salary && existing.employeeId === emp.id ? existing.salary : emp.salary;
+  const ded = emp && t ? deduction(minutes, salary, t.payRatio) : 0;
   const annual = emp && t?.code === 'annual' && isDateStr(input.date) ? annualStatus(emp, ctx.leaves, ctx.settlements, input.date, existingId) : null;
-  const fail = (error: Msg): LeaveCheck => ({ ok: false, error, minutes, hours, deduction: ded, annual });
+  const fail = (error: Msg): LeaveCheck => ({ ok: false, error, minutes, hours, deduction: ded, salary, annual });
 
   if (!isDateStr(input.date)) return fail(msg('日期不正確'));
   const holiday = ctx.calendars.isHoliday(input.date);
@@ -351,7 +358,7 @@ export function checkLeave(input: LeaveInput, ctx: LeaveContext, existing?: { id
     }
     if (hours > annual.remaining) return fail(msg('特休剩餘 {0} 天，不夠扣 {1} 天。', [toDays(annual.remaining), toDays(hours)]));
   }
-  return { ok: true, minutes, hours, deduction: ded, annual };
+  return { ok: true, minutes, hours, deduction: ded, salary, annual };
 }
 
 export interface EmployeeInput {

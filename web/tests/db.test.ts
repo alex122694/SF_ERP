@@ -82,12 +82,40 @@ describe('Db', () => {
     db.deleteLeave(lid);
     expect(db.state().leaves).toHaveLength(0);
   });
-  it('有紀錄的日子不能改為放假日；刪除員工一併刪除紀錄', async () => {
+  it('有紀錄的日子不能改為放假日', async () => {
     const { db, id } = await seeded();
     db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'annual', start: '09:30', end: '18:30', reason: '' });
     expect(() => db.setDay('2026-10-19', true)).toThrow('這天已有 1 筆紀錄');
-    expect(db.deleteEmployee(id)).toBe(1);
-    expect(db.state().leaves).toHaveLength(0);
+  });
+  it('有紀錄或特休處理紀錄的員工不能刪除，沒有紀錄的可以', async () => {
+    const { db, id } = await seeded();
+    db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'sick', start: '09:30', end: '12:00', reason: '' });
+    expect(() => db.deleteEmployee(id)).toThrow('不能刪除');
+    expect(db.state().leaves).toHaveLength(1);
+    const settledOnly = db.saveEmployee({ ...empInput, name: '只有結算' });
+    db.settle(settledOnly, '2026-03-01', 'cash', '2027-02-10');
+    expect(() => db.deleteEmployee(settledOnly)).toThrow('不能刪除');
+    const blank = db.saveEmployee({ ...empInput, name: '建錯的' });
+    db.deleteEmployee(blank);
+    expect(db.state().employees.map((e) => e.id)).toEqual([id, settledOnly]);
+  });
+  it('編輯舊紀錄以登記當時的薪資計算扣款，不以調薪後的薪資', async () => {
+    const { db, id } = await seeded();
+    const lid = db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'personal', start: '09:30', end: '10:30', reason: '' });
+    expect(db.state().leaves[0]).toMatchObject({ salary: 36000, deduction: 150 });
+    db.saveEmployee({ ...empInput, salary: 48000 }, id);
+    db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'personal', start: '09:30', end: '11:30', reason: '改時段' }, lid);
+    expect(db.state().leaves[0]).toMatchObject({ salary: 36000, deduction: 300, reason: '改時段' });
+    db.saveLeave({ employeeId: id, date: '2026-10-20', type: 'personal', start: '09:30', end: '10:30', reason: '' });
+    expect(db.state().leaves[1]).toMatchObject({ salary: 48000, deduction: 200 });
+  });
+  it('升級時既有紀錄補上當時薪資欄位', async () => {
+    const old = new SQL.Database();
+    for (let v = 0; v < 4; v++) old.exec(MIGRATIONS[v]);
+    old.exec('PRAGMA user_version = 4');
+    old.exec(`INSERT INTO employee (name, gender, salary, hire_date, annual_base_date, created_at, updated_at) VALUES ('甲', 'F', 42000, '2021-03-01', '2021-03-01', '', '')`);
+    old.exec(`INSERT INTO leave_record (employee_id, date, type_code, start_time, end_time, hours, deduction, created_at, updated_at) VALUES (1, '2026-10-19', 'sick', '09:30', '12:00', 2.5, 219, '', '')`);
+    expect(Db.open(SQL, old.export()).state().leaves[0]).toMatchObject({ salary: 42000, deduction: 219 });
   });
   it('特休換錢後不能再登記該期特休', async () => {
     const { db, id } = await seeded();

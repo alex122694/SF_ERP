@@ -1,0 +1,1029 @@
+<title>SF ERP 系統分析報告</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* 版面：左側固定目錄＋右側單欄內文（窄螢幕收成單欄）；色彩取自 SF ERP 自身的青綠識別色 */
+:root {
+  --bg: #f3f7f6;
+  --surface: #ffffff;
+  --raised: #e9f1ef;
+  --ink: #10201d;
+  --muted: #4f6a65;
+  --line: #d3e1de;
+  --accent: #0f7f73;
+  --accent-soft: #dcf0ec;
+  --ok: #2b7a3a;
+  --warn: #9a5c00;
+  --bad: #b3261e;
+  --info: #3756a8;
+  --ok-soft: #e3f3e6;
+  --warn-soft: #fbefd9;
+  --bad-soft: #fbe4e2;
+  --info-soft: #e5ebfa;
+  --lunch: #c9d6d3;
+  --font-display: "IBM Plex Sans", "Noto Sans TC", system-ui, sans-serif;
+  --font-body: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  --step--1: 0.8125rem;
+  --step-0: 0.9375rem;
+  --step-1: 1.125rem;
+  --step-2: 1.375rem;
+  --step-3: 1.875rem;
+  --step-4: 2.5rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1412; --surface: #101e1b; --raised: #16302b; --ink: #e2eeeb; --muted: #8eaaa4; --line: #23423c;
+    --accent: #5cc6b8; --accent-soft: #12362f; --ok: #7cc98b; --warn: #e5a640; --bad: #f08a80; --info: #97adf0;
+    --ok-soft: #15301c; --warn-soft: #33260e; --bad-soft: #3a1714; --info-soft: #172240; --lunch: #2b4741;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1412; --surface: #101e1b; --raised: #16302b; --ink: #e2eeeb; --muted: #8eaaa4; --line: #23423c;
+  --accent: #5cc6b8; --accent-soft: #12362f; --ok: #7cc98b; --warn: #e5a640; --bad: #f08a80; --info: #97adf0;
+  --ok-soft: #15301c; --warn-soft: #33260e; --bad-soft: #3a1714; --info-soft: #172240; --lunch: #2b4741;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+table { font-size: inherit; color: inherit; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code { background: var(--raised); padding: 0.08em 0.4em; border-radius: 4px; overflow-wrap: anywhere; }
+h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.3; text-wrap: balance; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+ul, ol { margin: 0; padding-left: 1.3em; }
+li + li { margin-top: 0.3em; }
+
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 80px;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 48px;
+}
+.toc { position: sticky; top: calc(24px + env(safe-area-inset-top, 0px)); align-self: start; font-size: var(--step--1); }
+.toc b { display: block; font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-size: 0.72rem; margin-bottom: 10px; }
+.toc ol { list-style: none; padding: 0; display: grid; gap: 2px; border-left: 1px solid var(--line); }
+.toc li + li { margin-top: 0; }
+.toc a { display: block; padding: 4px 0 4px 14px; color: var(--muted); text-decoration: none; margin-left: -1px; border-left: 2px solid transparent; }
+.toc a:hover { color: var(--ink); border-left-color: var(--accent); }
+.toc .num { font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent); margin-right: 6px; }
+
+main { min-width: 0; display: grid; gap: 64px; }
+section { display: grid; gap: 20px; min-width: 0; scroll-margin-top: 24px; }
+.sec-head { display: grid; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.sec-head .eyebrow { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; color: var(--accent); }
+.sec-head h2 { font-size: var(--step-3); font-weight: 700; }
+h3 { font-size: var(--step-1); font-weight: 600; margin-top: 8px; }
+.lede { color: var(--muted); }
+
+/* ---------- 封面 ---------- */
+.cover { display: grid; gap: 22px; padding-bottom: 28px; border-bottom: 2px solid var(--ink); }
+.cover .tag { display: inline-flex; gap: 10px; align-items: center; font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); flex-wrap: wrap; }
+.logo { width: 34px; height: 34px; border-radius: 9px; background: #5cc6b8; color: #06201d; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+.cover h1 { font-size: var(--step-4); font-weight: 700; letter-spacing: -0.01em; }
+.cover h1 small { display: block; font-size: var(--step-1); font-weight: 500; color: var(--muted); letter-spacing: 0; margin-top: 6px; font-family: var(--font-body); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: var(--step--1); color: var(--muted); }
+.meta b { color: var(--ink); font-weight: 500; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.fact { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; }
+.fact .v { font-family: var(--font-display); font-size: var(--step-2); font-weight: 700; font-variant-numeric: tabular-nums; }
+.fact .k { font-size: var(--step--1); color: var(--muted); }
+
+.takeaways { display: grid; gap: 12px; counter-reset: tk; }
+.takeaways li { list-style: none; display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; }
+.takeaways { padding: 0; }
+.takeaways li::before { counter-increment: tk; content: counter(tk); font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent); border: 1px solid var(--accent); border-radius: 50%; width: 22px; height: 22px; display: grid; place-items: center; }
+
+/* ---------- 共用元件 ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.scroll { overflow-x: auto; min-width: 0; -webkit-overflow-scrolling: touch; }
+table.t { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
+table.t th, table.t td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { font-family: var(--font-display); font-weight: 600; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.04em; background: var(--raised); white-space: nowrap; }
+table.t td.num, table.t th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.t tr:last-child td { border-bottom: 0; }
+.tbl-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+
+.pill { display: inline-block; font-size: 0.72rem; font-weight: 500; padding: 1px 8px; border-radius: 999px; white-space: nowrap; line-height: 1.6; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.info { background: var(--info-soft); color: var(--info); }
+.pill.mute { background: var(--raised); color: var(--muted); }
+.pill.acc { background: var(--accent-soft); color: var(--accent); }
+
+.note { font-size: var(--step--1); color: var(--muted); }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: var(--step--1); }
+.callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+
+/* ---------- 版本演進 ---------- */
+.editions { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.ed { display: grid; gap: 10px; align-content: start; }
+.ed h3 { margin: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ed dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: var(--step--1); }
+.ed dt { color: var(--muted); white-space: nowrap; }
+.ed dd { margin: 0; min-width: 0; }
+
+/* ---------- 架構圖 ---------- */
+.arch { display: grid; gap: 10px; }
+.layer { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.layer-name { font-family: var(--font-display); font-size: var(--step--1); font-weight: 600; color: var(--muted); padding-top: 10px; }
+.layer-name small { display: block; font-family: var(--font-mono); font-weight: 400; font-size: 0.7rem; }
+.boxes { display: flex; flex-wrap: wrap; gap: 8px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: var(--step--1); min-width: 0; flex: 1 1 140px; }
+.box b { display: block; font-family: var(--font-mono); font-weight: 500; font-size: 0.8rem; color: var(--ink); }
+.box span { color: var(--muted); font-size: 0.78rem; }
+.box.hl { border-color: var(--accent); background: var(--accent-soft); }
+.box.store { border-style: dashed; }
+.arrow-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 14px; }
+.arrow-row div:last-child { color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; padding-left: 16px; border-left: 2px dotted var(--line); margin-left: 24px; }
+
+/* ---------- ER 圖 ---------- */
+.er { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.er svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.er .tb { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.er .th { fill: var(--raised); }
+.er .th.core { fill: var(--accent-soft); }
+.er .tn { fill: var(--ink); font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+.er .col { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.er .pk { fill: var(--accent); }
+.er .fk { fill: var(--info); }
+.er .rel { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+.er .rel.logic { stroke-dasharray: 5 4; }
+.er .lbl { fill: var(--muted); font-family: var(--font-body); font-size: 11px; }
+.er .dot { fill: var(--muted); }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+.tcard { padding: 0; overflow: hidden; }
+.tcard header { padding: 12px 16px; border-bottom: 1px solid var(--line); display: grid; gap: 2px; }
+.tcard header b { font-family: var(--font-mono); font-weight: 500; }
+.tcard header span { font-size: var(--step--1); color: var(--muted); }
+.tcard table.t td:first-child { font-family: var(--font-mono); font-size: 0.78rem; white-space: nowrap; }
+.tcard table.t td:nth-child(2) { font-family: var(--font-mono); font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
+.k { font-family: var(--font-mono); font-size: 0.66rem; padding: 0 5px; border-radius: 4px; margin-left: 4px; vertical-align: 1px; }
+.k.pk { background: var(--accent-soft); color: var(--accent); }
+.k.fk { background: var(--info-soft); color: var(--info); }
+.k.new { background: var(--warn-soft); color: var(--warn); }
+
+.mig { display: grid; gap: 0; border-left: 2px solid var(--line); margin-left: 8px; }
+.mig > div { position: relative; padding: 0 0 16px 22px; display: grid; gap: 2px; }
+.mig > div::before { content: ""; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+.mig b { font-family: var(--font-mono); font-weight: 500; font-size: var(--step--1); }
+.mig span { font-size: var(--step--1); color: var(--muted); }
+
+/* ---------- 循序圖（泳道表） ---------- */
+table.seq { border-collapse: collapse; width: 100%; min-width: 760px; font-size: var(--step--1); }
+table.seq th { font-family: var(--font-mono); font-weight: 500; font-size: 0.75rem; padding: 8px; background: var(--raised); border-bottom: 1px solid var(--line); text-align: left; width: 20%; }
+table.seq th:first-child { width: 36px; }
+table.seq td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; border-left: 1px dashed var(--line); }
+table.seq td:first-child { border-left: 0; font-family: var(--font-mono); color: var(--muted); font-size: 0.72rem; text-align: right; }
+table.seq td.on { background: var(--accent-soft); }
+table.seq td.on.err { background: var(--bad-soft); }
+table.seq tr:last-child td { border-bottom: 0; }
+
+.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+.flow .st { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: var(--step--1); flex: 1 1 150px; min-width: 0; display: grid; gap: 2px; align-content: start; }
+.flow .st i { font-style: normal; font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); }
+.flow .st.bad { border-color: var(--bad); }
+
+/* ---------- 規則 ---------- */
+.day { display: grid; gap: 6px; }
+.day-bar { position: relative; height: 44px; border-radius: 8px; overflow: hidden; display: flex; border: 1px solid var(--line); }
+.day-bar > div { display: grid; place-items: center; font-size: 0.78rem; font-weight: 500; text-align: center; line-height: 1.25; }
+.seg-am { flex: 150; background: var(--accent-soft); color: var(--accent); }
+.seg-lunch { flex: 90; background: repeating-linear-gradient(135deg, var(--lunch) 0 6px, transparent 6px 12px); color: var(--muted); }
+.seg-pm { flex: 300; background: var(--accent-soft); color: var(--accent); border-left: 1px solid var(--surface); }
+.day-ticks { position: relative; height: 18px; font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); }
+.day-ticks span { position: absolute; transform: translateX(-50%); }
+.day-ticks span:first-child { transform: none; }
+.day-ticks span:last-child { transform: translateX(-100%); }
+.formula { font-family: var(--font-mono); font-size: 0.82rem; background: var(--raised); border-radius: 8px; padding: 12px 14px; overflow-x: auto; white-space: pre; line-height: 1.7; }
+
+.ladder { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: 6px; }
+.rung { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 6px; text-align: center; display: grid; gap: 0; }
+.rung .y { font-size: 0.72rem; color: var(--muted); }
+.rung .d { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); font-variant-numeric: tabular-nums; }
+.rung .d small { font-size: 0.7rem; font-weight: 500; color: var(--muted); margin-left: 2px; }
+.rung.max { border-color: var(--accent); }
+
+.dot-c { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
+
+/* ---------- 發現 ---------- */
+.findings { display: grid; gap: 12px; }
+.fd { display: grid; grid-template-columns: 4px minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.fd .sev { background: var(--muted); }
+.fd.s-mid .sev { background: var(--warn); }
+.fd.s-low .sev { background: var(--info); }
+.fd.s-info .sev { background: var(--line); }
+.fd .body { padding: 14px 18px; display: grid; gap: 8px; min-width: 0; }
+.fd .hd { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.fd .hd h3 { margin: 0; font-size: var(--step-0); }
+.fd .id { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
+.fd .ev { font-size: var(--step--1); color: var(--muted); }
+.fd .fix { font-size: var(--step--1); }
+.fd .fix b { color: var(--accent); font-weight: 500; }
+
+.recs { counter-reset: r; padding: 0; display: grid; gap: 10px; }
+.recs li { list-style: none; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: baseline; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.recs li:last-child { border-bottom: 0; }
+
+footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid var(--line); padding-top: 16px; }
+
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-block: 24px 56px; }
+  .toc { position: static; }
+  .toc ol { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-left: 0; }
+  .toc a { border-left: 0; padding-left: 0; }
+  .layer, .arrow-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .layer-name { padding-top: 0; }
+  .arrow-row div:first-child { display: none; }
+  .cover h1 { font-size: var(--step-3); }
+  .recs li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+  <nav class="toc" aria-label="目錄">
+    <b>目錄</b>
+    <ol>
+      <li><a href="#summary"><span class="num">01</span>摘要</a></li>
+      <li><a href="#editions"><span class="num">02</span>系統定位與版本</a></li>
+      <li><a href="#stack"><span class="num">03</span>技術棧</a></li>
+      <li><a href="#arch"><span class="num">04</span>架構與模組</a></li>
+      <li><a href="#data"><span class="num">05</span>資料結構</a></li>
+      <li><a href="#flow"><span class="num">06</span>Dataflow</a></li>
+      <li><a href="#rules"><span class="num">07</span>業務規則引擎</a></li>
+      <li><a href="#security"><span class="num">08</span>安全與資料完整性</a></li>
+      <li><a href="#quality"><span class="num">09</span>測試與品質</a></li>
+      <li><a href="#findings"><span class="num">10</span>發現與風險</a></li>
+      <li><a href="#recs"><span class="num">11</span>建議</a></li>
+      <li><a href="#appendix"><span class="num">12</span>附錄與方法</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="cover">
+      <div class="tag"><span class="logo">SF</span><span>sf-erp-web 2.0.0 · commit ac039e1 · 分支 claude/system-analysis-report-0e5330</span></div>
+      <h1>SF ERP 系統分析報告<small>人事出缺勤、請假扣款與特休管理系統：資料結構、技術棧與資料流</small></h1>
+      <div class="meta">
+        <span>分析日期 <b>2026-10-21</b></span>
+        <span>範圍 <b>整個 repo（57 個版控檔）</b></span>
+        <span>依據 <b>原始碼、docs/規格.md、測試執行結果</b></span>
+      </div>
+    </header>
+
+    <!-- 01 -->
+    <section id="summary">
+      <div class="sec-head"><span class="eyebrow">01 · SUMMARY</span><h2>摘要</h2></div>
+      <div class="facts">
+        <div class="fact"><span class="v">~7,000</span><span class="k">行程式碼與文件</span></div>
+        <div class="fact"><span class="v">3</span><span class="k">個執行期依賴</span></div>
+        <div class="fact"><span class="v">7</span><span class="k">張 SQLite 資料表</span></div>
+        <div class="fact"><span class="v">4</span><span class="k">次 schema migration</span></div>
+        <div class="fact"><span class="v">74 / 74</span><span class="k">個單元測試通過</span></div>
+        <div class="fact"><span class="v">1.26 MB</span><span class="k">單檔 index.html</span></div>
+      </div>
+      <ol class="takeaways">
+        <li><span><b>這是一套「沒有伺服器的 Web 應用」。</b>輕量版（lite）把 React 前端、規則引擎與 SQLite（sql.js WASM）全部打包成一個 <code>index.html</code>，用 Chrome／Edge 以 <code>file://</code> 開啟，透過 File System Access API 直接讀寫使用者選定資料夾內的 <code>sf_erp.sqlite</code>。不開 port、不連網路，由 CSP 強制。</span></li>
+        <li><span><b>資料模型小而清楚。</b>7 張表：員工、請假紀錄（一天一筆）、假別、特休結算、行事曆年度、行事曆日、系統設定。扣款金額與時數在存檔時算好寫入，其餘數字（特休剩餘、到期提醒、統計）都在畫面上即時推導，不另外存。</span></li>
+        <li><span><b>資料流是「整份讀出、整份寫回」。</b>每次修改都在記憶體中的 SQLite 交易內完成，接著把整個資料庫 export 成位元組，經由「先寫暫存檔、close 時取代」的方式原子寫回磁碟；當天第一次存檔前先備份，保留 30 份。寫入失敗會把記憶體還原成上次成功存檔的內容。</span></li>
+        <li><span><b>規則集中在一個純函式模組。</b><code>rules.ts</code>（467 行）涵蓋工時重疊計算、扣款、勞基法 §38 特休週年制、遞延／換錢／歸零與所有防呆；同一個 <code>checkLeave()</code> 同時用於畫面即時試算與存檔檢查，兩者不會不一致。</span></li>
+        <li><span><b>品質基礎良好，但有幾處需要處理。</b>TypeScript strict 編譯無錯、74 個測試全過。主要風險在：本機 <code>node_modules</code> 與宣告版本不符（vite 5 對 7）、跨語言規則測試案例只涵蓋計算函式、規格文件已落後實作、刪除員工會連帶刪除特休換錢紀錄。詳見第 10 節。</span></li>
+        <li><span><b>標準版仍停留在規格。</b>規格描述的 Java 17 / Spring Boot 3 / PostgreSQL 16 / docker compose 版本在 repo 中沒有任何程式碼；前端已預留 <code>DataSource</code> 介面與 <code>edition: 'std'</code>，但尚無 <code>ApiSource</code> 實作。</span></li>
+      </ol>
+    </section>
+
+    <!-- 02 -->
+    <section id="editions">
+      <div class="sec-head"><span class="eyebrow">02 · EDITIONS</span><h2>系統定位與版本</h2></div>
+      <p class="lede">SF ERP 服務一家台灣小型公司的人資：登記請假與遲到、依薪資自動算出扣款、依勞基法追蹤特休額度與到期處理，並以政府辦公日曆判斷上班日。不含簽核、薪資結算、勞健保與所得稅。repo 內同時存在三個世代：</p>
+      <div class="editions">
+        <div class="card ed">
+          <h3>v1.2 舊版 <span class="pill mute">仍在 repo</span></h3>
+          <dl>
+            <dt>執行</dt><dd><code>start.bat</code> → <code>node server.js</code>，監聽 127.0.0.1:3000</dd>
+            <dt>前端</dt><dd>原生 JS（<code>public/app.js</code> 667 行）</dd>
+            <dt>後端</dt><dd>Node <code>http</code>，9 支 REST API，零依賴</dd>
+            <dt>資料</dt><dd><code>data/db.json</code> 整檔 JSON，每日備份</dd>
+            <dt>角色</dt><dd>舊資料的來源；lite 可一次匯入</dd>
+          </dl>
+        </div>
+        <div class="card ed" style="border-color: var(--accent)">
+          <h3>v2.0 輕量版 lite <span class="pill ok">已實作・主力</span></h3>
+          <dl>
+            <dt>執行</dt><dd>瀏覽器直接開 <code>index.html</code>（file://）</dd>
+            <dt>前端</dt><dd>React 18 + TypeScript（<code>web/</code>）</dd>
+            <dt>後端</dt><dd>無；規則與 DB 都在瀏覽器內</dd>
+            <dt>資料</dt><dd>使用者資料夾內 <code>sf_erp.sqlite</code></dd>
+            <dt>交付</dt><dd><code>release/SF ERP-lite.zip</code>（4 個項目）</dd>
+          </dl>
+        </div>
+        <div class="card ed">
+          <h3>v2.0 標準版 <span class="pill warn">只有規格</span></h3>
+          <dl>
+            <dt>執行</dt><dd>docker compose：nginx、app、db 三個容器</dd>
+            <dt>前端</dt><dd>與 lite 共用，改接 <code>ApiSource</code>（REST）</dd>
+            <dt>後端</dt><dd>Java 17、Spring Boot 3、JPA、Security、Flyway</dd>
+            <dt>資料</dt><dd>PostgreSQL 16，同一套資料表</dd>
+            <dt>增加</dt><dd>登入、ADMIN／HR／VIEWER 角色、操作人欄位</dd>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section id="stack">
+      <div class="sec-head"><span class="eyebrow">03 · TECH STACK</span><h2>技術棧</h2></div>
+      <p class="lede">執行期只依賴 react、react-dom、sql.js 三個套件。xlsx 解析與輸出、zip、i18n、路由、狀態管理都是自製的小模組，這讓整個 lite 可以壓進單一 HTML 且沒有供應鏈上的額外風險。</p>
+      <div class="tbl-wrap scroll">
+        <table class="t">
+          <thead><tr><th>層</th><th>技術</th><th>宣告版本</th><th>在系統中的用途</th></tr></thead>
+          <tbody>
+            <tr><td>UI</td><td>React + react-dom</td><td class="mono">^18.3.1</td><td>7 個頁面與共用表單、對話框元件；函式元件＋hooks，StrictMode</td></tr>
+            <tr><td>狀態</td><td><code>useSyncExternalStore</code> + Context</td><td>—</td><td>LiteSource 推送狀態變更；無 Redux／Zustand</td></tr>
+            <tr><td>路由</td><td>自製 hash router</td><td>—</td><td><code>#/page/id?query</code>，file:// 下不需要伺服器重寫</td></tr>
+            <tr><td>語言</td><td>TypeScript（strict、noUnused*）</td><td class="mono">^5.6.3</td><td>前端、規則、資料層、測試全部 TS</td></tr>
+            <tr><td>建置</td><td>Vite + plugin-react + vite-plugin-singlefile</td><td class="mono">^7.3.7 / ^5.2.0 / ^2.3.4</td><td>JS、CSS、WASM 全部內嵌為單一 <code>index.html</code>；建置時注入 CSP</td></tr>
+            <tr><td>資料庫</td><td>sql.js（SQLite 編譯成 WASM）</td><td class="mono">^1.12.0</td><td>記憶體內 SQLite；以 <code>PRAGMA user_version</code> 做 migration</td></tr>
+            <tr><td>檔案存取</td><td>File System Access API、IndexedDB、OPFS</td><td>瀏覽器內建</td><td>讀寫資料夾；記住資料夾授權；開發用的測試儲存</td></tr>
+            <tr><td>多分頁協調</td><td>BroadcastChannel、<code>.lock</code> 檔</td><td>瀏覽器內建</td><td>同瀏覽器第二分頁唯讀；別台電腦開啟時警告</td></tr>
+            <tr><td>xlsx 讀取</td><td>自製（DecompressionStream + 正規表示式）</td><td>—</td><td>解析人事行政總處「辦公日曆表」，以儲存格底色判斷放假日</td></tr>
+            <tr><td>xlsx／CSV 輸出</td><td>自製（stored zip + CRC32）</td><td>—</td><td>請假總覽匯出 Excel；員工主檔匯出 CSV（UTF-8 BOM）</td></tr>
+            <tr><td>多語言</td><td>自製 <code>t()</code>／<code>tr()</code>／<code>msgText()</code></td><td>—</td><td>中文為原文鍵，432 條 × 英／日／韓翻譯</td></tr>
+            <tr><td>測試</td><td>Vitest（node 環境）</td><td class="mono">^4.1.11</td><td>規則、DB、xlsx、i18n 共 74 個測試</td></tr>
+            <tr><td>發佈</td><td><code>scripts/package-lite.mjs</code>（Node zlib）</td><td>—</td><td>產生 <code>SF ERP/index.html</code>、<code>data/</code>、使用說明，並可打包 zip</td></tr>
+            <tr><td>舊版</td><td>Node.js <code>http</code> + JSON 檔</td><td>零依賴</td><td>v1.2 本機伺服器</td></tr>
+            <tr><td>標準版（規劃）</td><td>Spring Boot 3、PostgreSQL 16、nginx、docker compose</td><td>—</td><td>尚未開始</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn">本機 <code>web/node_modules</code> 實際安裝的是 vite 5.4.11、@vitejs/plugin-react 4.3.4、vite-plugin-singlefile 2.0.3、vitest 2.1.8，與 <code>package.json</code> 及 <code>package-lock.json</code>（vitest 4.1.11）不符，<code>npm ls</code> 會標示 invalid。本報告的測試結果是在這組舊版本上跑出來的，見發現 F1。</div>
+    </section>
+
+    <!-- 04 -->
+    <section id="arch">
+      <div class="sec-head"><span class="eyebrow">04 · ARCHITECTURE</span><h2>架構與模組</h2></div>
+      <p class="lede">分層很乾淨：畫面只認得 <code>DataSource</code> 介面；所有寫入一律經過規則檢查；持久化細節（資料夾、備份、鎖）封裝在 <code>FolderStore</code>。換成標準版時，只需要提供另一個 <code>DataSource</code> 實作。</p>
+
+      <div class="arch" role="img" aria-label="lite 分層架構圖">
+        <div class="layer">
+          <div class="layer-name">畫面<small>pages/ · ui/</small></div>
+          <div class="boxes">
+            <div class="box"><b>Home</b><span>今日、數字卡、待處理特休</span></div>
+            <div class="box"><b>Quick</b><span>快速登記假單</span></div>
+            <div class="box"><b>Attendance</b><span>月曆／人員矩陣</span></div>
+            <div class="box"><b>Employees · Detail</b><span>主檔、個人頁、全年圖</span></div>
+            <div class="box"><b>Overview</b><span>請假總覽、匯出 Excel</span></div>
+            <div class="box"><b>Settings</b><span>制度、行事曆、備份、匯入</span></div>
+          </div>
+        </div>
+        <div class="arrow-row"><div></div><div>useApp() · run() · go(#/…)</div></div>
+        <div class="layer">
+          <div class="layer-name">應用殼層<small>App · app-context</small></div>
+          <div class="boxes">
+            <div class="box"><b>OpenScreen</b><span>選資料夾、授權、鎖定判斷</span></div>
+            <div class="box hl"><b>AppProvider</b><span>useSyncExternalStore 訂閱 State；toast、confirm、hash 路由</span></div>
+            <div class="box"><b>derive.ts</b><span>特休現況、到期清單、缺行事曆年度</span></div>
+            <div class="box"><b>i18n</b><span>zh／en／ja／ko</span></div>
+          </div>
+        </div>
+        <div class="arrow-row"><div></div><div>DataSource 介面：state() · save* · delete* · import* · settle() · subscribe()</div></div>
+        <div class="layer">
+          <div class="layer-name">資料來源<small>data/source.ts</small></div>
+          <div class="boxes">
+            <div class="box hl"><b>LiteSource</b><span>寫入佇列、整檔存回、失敗還原、狀態快取</span></div>
+            <div class="box store"><b>ApiSource</b><span>標準版用，尚未實作</span></div>
+          </div>
+        </div>
+        <div class="arrow-row"><div></div><div>mutate(db =&gt; …)</div></div>
+        <div class="layer">
+          <div class="layer-name">領域與資料<small>db · rules · 匯入</small></div>
+          <div class="boxes">
+            <div class="box hl"><b>Db</b><span>sql.js 封裝、migration、巢狀交易、CRUD</span></div>
+            <div class="box hl"><b>rules.ts</b><span>純函式規則：checkLeave、annualStatus、settlementsDue</span></div>
+            <div class="box"><b>calendarXlsx</b><span>辦公日曆表解析</span></div>
+            <div class="box"><b>legacyImport</b><span>v1.2 db.json 轉入</span></div>
+            <div class="box"><b>xlsxWrite</b><span>Excel 輸出</span></div>
+          </div>
+        </div>
+        <div class="arrow-row"><div></div><div>read() · write(bytes) · acquireLock()</div></div>
+        <div class="layer">
+          <div class="layer-name">持久化<small>data/storage.ts</small></div>
+          <div class="boxes">
+            <div class="box"><b>FolderStore</b><span>原子寫入、每日備份、保留 N 份、.lock 心跳</span></div>
+            <div class="box store"><b>sf_erp.sqlite</b><span>使用者資料夾</span></div>
+            <div class="box store"><b>backup/</b><span>sf_erp-YYYYMMDD.sqlite</span></div>
+            <div class="box store"><b>IndexedDB</b><span>上次的資料夾 handle</span></div>
+            <div class="box store"><b>localStorage</b><span>主題、語言、瀏覽器 ID</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h3>模組規模</h3>
+      <div class="tbl-wrap scroll">
+        <table class="t">
+          <thead><tr><th>目錄</th><th>職責</th><th class="num">行數</th></tr></thead>
+          <tbody>
+            <tr><td><code>web/src/pages/</code></td><td>7 個頁面元件</td><td class="num">1,150</td></tr>
+            <tr><td><code>web/src/data/</code></td><td>schema、Db、LiteSource、FolderStore、xlsx 讀寫、舊版匯入、範例資料</td><td class="num">1,259</td></tr>
+            <tr><td><code>web/src/ui/</code></td><td>Shell、LeaveForm、對話框、格式化、圖示、context</td><td class="num">757</td></tr>
+            <tr><td><code>web/src/i18n/</code></td><td>翻譯表與翻譯函式</td><td class="num">536</td></tr>
+            <tr><td><code>web/src/rules/</code></td><td>業務規則、訊息物件</td><td class="num">490</td></tr>
+            <tr><td><code>web/src/</code> 其他</td><td>App、main、styles.css</td><td class="num">466</td></tr>
+            <tr><td><code>web/tests/</code></td><td>4 個測試檔＋政府日曆產生器</td><td class="num">502</td></tr>
+            <tr><td><code>web/</code> 建置</td><td>vite.config.ts、package-lite.mjs</td><td class="num">125</td></tr>
+            <tr><td>根目錄 v1.2</td><td>server.js、lib/、public/</td><td class="num">1,435</td></tr>
+            <tr><td><code>docs/規格.md</code></td><td>系統規格 v2.0</td><td class="num">195</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section id="data">
+      <div class="sec-head"><span class="eyebrow">05 · DATA MODEL</span><h2>資料結構</h2></div>
+      <p class="lede">SQLite schema 定義在 <code>web/src/data/schema.ts</code>，以陣列記錄 migration，開啟資料檔時依 <code>PRAGMA user_version</code> 逐一套用，每一步包在交易中。外鍵在每次開啟時以 <code>PRAGMA foreign_keys = ON</code> 啟用。日期一律存 <code>YYYY-MM-DD</code> 文字，避免時區問題。</p>
+
+      <h3>實體關聯</h3>
+      <div class="er scroll">
+        <svg viewBox="0 0 900 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SF ERP 資料表關聯圖">
+          <!-- 關聯線 -->
+          <path class="rel" d="M230 92 H330"/>
+          <circle class="dot" cx="230" cy="92" r="3"/><text class="lbl" x="250" y="84">1 ─ N</text>
+          <path class="rel" d="M560 92 H660"/>
+          <circle class="dot" cx="660" cy="92" r="3"/><text class="lbl" x="582" y="84">N ─ 1</text>
+          <path class="rel" d="M120 200 V290"/>
+          <circle class="dot" cx="120" cy="200" r="3"/><text class="lbl" x="128" y="250">1 ─ N</text>
+          <path class="rel" d="M770 380 H700"/>
+          <circle class="dot" cx="700" cy="380" r="3"/><text class="lbl" x="712" y="372">1 ─ N</text>
+          <path class="rel logic" d="M445 214 V340 H480"/>
+          <text class="lbl" x="452" y="300">date 邏輯對應</text>
+          <text class="lbl" x="452" y="316">（無外鍵）</text>
+
+          <!-- employee -->
+          <rect class="tb" x="10" y="20" width="220" height="180" rx="8"/>
+          <path class="th core" d="M10 28 a8 8 0 0 1 8 -8 h204 a8 8 0 0 1 8 8 v20 h-220z"/>
+          <text class="tn" x="22" y="40">employee</text>
+          <text class="col" x="22" y="68"><tspan class="pk">id</tspan> INTEGER PK</text>
+          <text class="col" x="22" y="86">name, gender (M/F)</text>
+          <text class="col" x="22" y="104">salary INTEGER &gt; 0</text>
+          <text class="col" x="22" y="122">hire_date, annual_base_date</text>
+          <text class="col" x="22" y="140">leave_date NULL</text>
+          <text class="col" x="22" y="158">email, phone</text>
+          <text class="col" x="22" y="176">created_at, updated_at</text>
+
+          <!-- leave_record -->
+          <rect class="tb" x="330" y="20" width="230" height="194" rx="8"/>
+          <path class="th core" d="M330 28 a8 8 0 0 1 8 -8 h214 a8 8 0 0 1 8 8 v20 h-230z"/>
+          <text class="tn" x="342" y="40">leave_record</text>
+          <text class="col" x="342" y="68"><tspan class="pk">id</tspan> INTEGER PK</text>
+          <text class="col" x="342" y="86"><tspan class="fk">employee_id</tspan> → employee CASCADE</text>
+          <text class="col" x="342" y="104"><tspan class="fk">type_code</tspan> → leave_type</text>
+          <text class="col" x="342" y="122">date（一天一筆）</text>
+          <text class="col" x="342" y="140">start_time, end_time</text>
+          <text class="col" x="342" y="158">hours REAL, deduction INT</text>
+          <text class="col" x="342" y="176">reason</text>
+          <text class="col" x="342" y="194">created_at, updated_at</text>
+
+          <!-- leave_type -->
+          <rect class="tb" x="660" y="20" width="230" height="194" rx="8"/>
+          <path class="th" d="M660 28 a8 8 0 0 1 8 -8 h214 a8 8 0 0 1 8 8 v20 h-230z"/>
+          <text class="tn" x="672" y="40">leave_type</text>
+          <text class="col" x="672" y="68"><tspan class="pk">code</tspan> TEXT PK</text>
+          <text class="col" x="672" y="86">name, pay_ratio</text>
+          <text class="col" x="672" y="104">unit_minutes</text>
+          <text class="col" x="672" y="122">segment_only, female_only</text>
+          <text class="col" x="672" y="140">max_minutes NULL</text>
+          <text class="col" x="672" y="158">confirm_twice</text>
+          <text class="col" x="672" y="176">color, sort_order</text>
+          <text class="col" x="672" y="194">預設 6 筆種子資料</text>
+
+          <!-- annual_settlement -->
+          <rect class="tb" x="10" y="290" width="260" height="170" rx="8"/>
+          <path class="th core" d="M10 298 a8 8 0 0 1 8 -8 h244 a8 8 0 0 1 8 8 v20 h-260z"/>
+          <text class="tn" x="22" y="310">annual_settlement</text>
+          <text class="col" x="22" y="338"><tspan class="pk">id</tspan> INTEGER PK</text>
+          <text class="col" x="22" y="356"><tspan class="fk">employee_id</tspan> → employee CASCADE</text>
+          <text class="col" x="22" y="374">period_start, period_end</text>
+          <text class="col" x="22" y="392">remaining_hours</text>
+          <text class="col" x="22" y="410">action cash/defer/zero, amount</text>
+          <text class="col" x="22" y="428">deferred_hours, deferred_until</text>
+          <text class="col" x="22" y="446">UNIQUE(employee_id, period_start)</text>
+
+          <!-- calendar_day -->
+          <rect class="tb" x="480" y="300" width="220" height="130" rx="8"/>
+          <path class="th" d="M480 308 a8 8 0 0 1 8 -8 h204 a8 8 0 0 1 8 8 v20 h-220z"/>
+          <text class="tn" x="492" y="320">calendar_day</text>
+          <text class="col" x="492" y="348"><tspan class="pk">date</tspan> TEXT PK</text>
+          <text class="col" x="492" y="366"><tspan class="fk">year</tspan> → calendar_year</text>
+          <text class="col" x="492" y="384">gov_holiday 0/1</text>
+          <text class="col" x="492" y="402">override NULL/0/1</text>
+          <text class="col" x="492" y="420">override_reason</text>
+
+          <!-- calendar_year -->
+          <rect class="tb" x="770" y="320" width="120" height="96" rx="8"/>
+          <path class="th" d="M770 328 a8 8 0 0 1 8 -8 h104 a8 8 0 0 1 8 8 v20 h-120z"/>
+          <text class="tn" x="782" y="340">calendar_year</text>
+          <text class="col" x="782" y="368"><tspan class="pk">year</tspan> PK</text>
+          <text class="col" x="782" y="386">source_file</text>
+          <text class="col" x="782" y="404">uploaded_at</text>
+
+          <!-- app_setting -->
+          <rect class="tb" x="300" y="380" width="150" height="76" rx="8"/>
+          <path class="th" d="M300 388 a8 8 0 0 1 8 -8 h134 a8 8 0 0 1 8 8 v20 h-150z"/>
+          <text class="tn" x="312" y="400">app_setting</text>
+          <text class="col" x="312" y="428"><tspan class="pk">key</tspan> TEXT PK</text>
+          <text class="col" x="312" y="446">value TEXT</text>
+        </svg>
+      </div>
+      <p class="note">實線為外鍵；虛線為程式邏輯上的對應（登記請假時以 <code>calendar_day</code> 判斷是否為放假日，但兩表之間沒有外鍵）。綠底表頭為核心業務表。</p>
+
+      <h3>欄位明細</h3>
+      <div class="cols">
+        <div class="card tcard">
+          <header><b>employee</b><span>員工主檔；有紀錄時不能刪除，以離職日處理</span></header>
+          <div class="scroll"><table class="t"><tbody>
+            <tr><td>id<span class="k pk">PK</span></td><td>INTEGER AI</td><td></td></tr>
+            <tr><td>name</td><td>TEXT NN</td><td>去除前後空白</td></tr>
+            <tr><td>gender</td><td>TEXT CHECK</td><td>'M'／'F'；生理假限 F</td></tr>
+            <tr><td>salary</td><td>INTEGER CHECK &gt;0</td><td>月本薪，扣款與換錢的基準</td></tr>
+            <tr><td>hire_date</td><td>TEXT</td><td>到職日</td></tr>
+            <tr><td>annual_base_date</td><td>TEXT</td><td>特休年資起算日，預設＝到職日</td></tr>
+            <tr><td>leave_date</td><td>TEXT NULL</td><td>須晚於到職日；之後不能登記</td></tr>
+            <tr><td>email／phone</td><td>TEXT ''</td><td>選填；信箱檢查格式</td></tr>
+            <tr><td>created_at／updated_at</td><td>TEXT</td><td>本地時間 <code>YYYY-MM-DD HH:MM:SS</code></td></tr>
+          </tbody></table></div>
+        </div>
+        <div class="card tcard">
+          <header><b>leave_record</b><span>出缺勤紀錄，一天一筆；索引：date、(employee_id, date)</span></header>
+          <div class="scroll"><table class="t"><tbody>
+            <tr><td>id<span class="k pk">PK</span></td><td>INTEGER AI</td><td></td></tr>
+            <tr><td>employee_id<span class="k fk">FK</span></td><td>INTEGER</td><td>ON DELETE CASCADE</td></tr>
+            <tr><td>date</td><td>TEXT</td><td>必須是已匯入年度的上班日</td></tr>
+            <tr><td>type_code<span class="k fk">FK</span></td><td>TEXT</td><td>→ leave_type.code</td></tr>
+            <tr><td>start_time／end_time</td><td>TEXT HH:MM</td><td>30 分對齊；遲到起固定 09:30</td></tr>
+            <tr><td>hours</td><td>REAL</td><td>存檔時算好；特休為 4／8</td></tr>
+            <tr><td>deduction</td><td>INTEGER</td><td>存檔時算好（元）</td></tr>
+            <tr><td>salary<span class="k new">v5</span></td><td>INTEGER</td><td>登記當時的月本薪；編輯時以此重算</td></tr>
+            <tr><td>reason</td><td>TEXT ''</td><td>選填</td></tr>
+            <tr><td>created_at／updated_at</td><td>TEXT</td><td></td></tr>
+          </tbody></table></div>
+        </div>
+        <div class="card tcard">
+          <header><b>annual_settlement</b><span>特休到期處理，一個週年期間最多一筆</span></header>
+          <div class="scroll"><table class="t"><tbody>
+            <tr><td>id<span class="k pk">PK</span></td><td>INTEGER AI</td><td></td></tr>
+            <tr><td>employee_id<span class="k fk">FK</span></td><td>INTEGER</td><td>ON DELETE CASCADE</td></tr>
+            <tr><td>period_start／period_end</td><td>TEXT</td><td>週年期間；end 為最後一天（含）</td></tr>
+            <tr><td>remaining_hours</td><td>REAL</td><td>處理當下剩餘（含遞延）</td></tr>
+            <tr><td>action</td><td>TEXT CHECK</td><td>cash／defer／zero</td></tr>
+            <tr><td>amount</td><td>INTEGER</td><td>換錢金額＝時數 × 當下時薪</td></tr>
+            <tr><td>deferred_hours<span class="k new">規格未列</span></td><td>REAL 0</td><td>遞延到下一期的時數</td></tr>
+            <tr><td>deferred_until</td><td>TEXT NULL</td><td>遞延額度最後一天</td></tr>
+            <tr><td>decided_at</td><td>TEXT</td><td>處理時間</td></tr>
+          </tbody></table></div>
+        </div>
+        <div class="card tcard">
+          <header><b>calendar_year ＋ calendar_day</b><span>政府辦公日曆；每年度 365／366 筆</span></header>
+          <div class="scroll"><table class="t"><tbody>
+            <tr><td>year<span class="k pk">PK</span></td><td>INTEGER</td><td>calendar_year</td></tr>
+            <tr><td>source_file／uploaded_at</td><td>TEXT</td><td>上傳檔名與時間</td></tr>
+            <tr><td>date<span class="k pk">PK</span></td><td>TEXT</td><td>calendar_day</td></tr>
+            <tr><td>year<span class="k fk">FK</span></td><td>INTEGER</td><td>→ calendar_year</td></tr>
+            <tr><td>gov_holiday</td><td>INTEGER 0/1</td><td>政府日曆判定</td></tr>
+            <tr><td>override</td><td>INTEGER NULL</td><td>NULL＝沒改過；重新匯入時保留</td></tr>
+            <tr><td>override_reason<span class="k new">規格未列</span></td><td>TEXT NULL</td><td>手動修改必填，最多 100 字</td></tr>
+          </tbody></table></div>
+          <p class="note" style="padding: 0 16px 14px">是否放假 ＝ <code>override ?? gov_holiday</code>；查無該日代表年度未匯入，不能登記。</p>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="stack" style="display:grid; gap:12px; min-width:0">
+          <h3>leave_type 種子資料</h3>
+          <div class="tbl-wrap scroll">
+            <table class="t">
+              <thead><tr><th>code</th><th>名稱</th><th class="num">給薪</th><th>最小單位</th><th>限制</th><th>雙重確認</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">annual</td><td>特休</td><td class="num">100%</td><td>半天（240 分）</td><td>只能全天／上午／下午；額度</td><td><span class="pill acc">開</span></td></tr>
+                <tr><td class="mono">personal</td><td>事假</td><td class="num">0%</td><td>30 分</td><td>—</td><td><span class="pill acc">開</span></td></tr>
+                <tr><td class="mono">sick</td><td>病假</td><td class="num">50%</td><td>30 分</td><td>—</td><td><span class="pill mute">關</span></td></tr>
+                <tr><td class="mono">menstrual</td><td>生理假</td><td class="num">50%</td><td>30 分</td><td>限女性</td><td><span class="pill mute">關</span></td></tr>
+                <tr><td class="mono">official</td><td>公假</td><td class="num">100%</td><td>30 分</td><td>—</td><td><span class="pill mute">關</span></td></tr>
+                <tr><td class="mono">late</td><td>遲到</td><td class="num">0%</td><td>1 分</td><td>09:30 起，最多 30 分</td><td><span class="pill mute">關</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div style="display:grid; gap:12px; min-width:0">
+          <h3>app_setting 鍵值</h3>
+          <div class="tbl-wrap scroll">
+            <table class="t">
+              <thead><tr><th>key</th><th>預設</th><th>可在畫面修改</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">work_start / work_end</td><td class="mono">09:30 / 18:30</td><td>否（規則寫死在程式）</td></tr>
+                <tr><td class="mono">lunch_start / lunch_end</td><td class="mono">12:00 / 13:30</td><td>否（同上）</td></tr>
+                <tr><td class="mono">hours_per_day</td><td class="mono">8</td><td>否（同上）</td></tr>
+                <tr><td class="mono">annual_remind_days</td><td class="mono">30</td><td>是：14／30／60</td></tr>
+                <tr><td class="mono">backup_keep</td><td class="mono">30</td><td>程式支援，畫面未提供</td></tr>
+                <tr><td class="mono">annual_track_from <span class="k new">v2</span></td><td>migration 當天</td><td>是：特休追蹤起算日</td></tr>
+                <tr><td class="mono">day_reasons <span class="k new">v4</span></td><td>4 個原因（JSON）</td><td>是：新增／刪除快選</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note">上班時間等 5 個鍵存在資料表裡，但規則引擎使用的是 <code>rules.ts</code> 的常數，改資料表不會影響計算。</p>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div style="display:grid; gap:12px; min-width:0">
+          <h3>Migration 歷程（user_version）</h3>
+          <div class="mig">
+            <div><b>v1 · 基本結構</b><span>建立 7 張表、2 個索引；寫入 6 個假別與 7 個設定</span></div>
+            <div><b>v2 · 特休追蹤起算日</b><span>新增 <code>annual_track_from</code> = 今天；之前到期的期間視為已在系統外處理</span></div>
+            <div><b>v3 · 特休改半天單位</b><span>既有特休紀錄 hours 改為全天 8、半天 4；<code>unit_minutes</code> 改 240</span></div>
+            <div><b>v4 · 手動修改原因</b><span><code>calendar_day</code> 加 <code>override_reason</code>；新增 <code>day_reasons</code> 快選</span></div>
+            <div><b>v5 · 登記當時薪資</b><span><code>leave_record</code> 加 <code>salary</code>，既有紀錄以升級時的薪資補上（10/21 新增）</span></div>
+          </div>
+        </div>
+        <div style="display:grid; gap:12px; min-width:0">
+          <h3>記憶體中的 State</h3>
+          <p class="note">每次寫入後 <code>Db.state()</code> 把整個資料庫讀成一個物件，畫面全部從這裡取值：</p>
+          <div class="formula">State {
+  employees:     Employee[]      // ORDER BY hire_date, id
+  leaves:        LeaveRecord[]   // ORDER BY date, start_time
+  leaveTypes:    LeaveType[]     // ORDER BY sort_order
+  settlements:   Settlement[]
+  calendarYears: CalendarYear[]  // 含手動修改天數
+  days:          Map&lt;date, { gov, override, reason }&gt;
+  settings:      Record&lt;key, value&gt;
+}</div>
+        </div>
+      </div>
+
+      <h3>舊版 db.json 對應</h3>
+      <div class="tbl-wrap scroll">
+        <table class="t">
+          <thead><tr><th>v1.2 db.json</th><th>v2.0 資料表</th><th>轉換規則</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">employees[]</td><td class="mono">employee</td><td>保留原 id；<code>annual_base_date</code> ＝ hireDate</td></tr>
+            <tr><td class="mono">leaves[] (empId, amount, hours)</td><td class="mono">leave_record</td><td>保留原 id；時數與扣款<b>以目前規則重新計算</b>，不採用檔案中的數字</td></tr>
+            <tr><td class="mono">calendars{year}.govHolidays</td><td class="mono">calendar_year + calendar_day</td><td>展開成每年每一天</td></tr>
+            <tr><td class="mono">calendars{year}.overrides</td><td class="mono">calendar_day.override</td><td>保留手動修改（不含原因）</td></tr>
+            <tr><td class="mono">nextId</td><td>—</td><td>捨棄，改用 AUTOINCREMENT</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">只能匯入到沒有員工與紀錄的資料檔；整批在一個交易中執行，任何一筆格式錯誤或匯入後筆數不符就全部取消。</p>
+
+      <h3>資料存放位置</h3>
+      <div class="tbl-wrap scroll">
+        <table class="t">
+          <thead><tr><th>位置</th><th>內容</th><th>生命週期</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">data/sf_erp.sqlite</td><td>全部業務資料</td><td>每次修改後整檔寫回</td></tr>
+            <tr><td class="mono">data/backup/sf_erp-YYYYMMDD.sqlite</td><td>當天第一次存檔前的舊檔</td><td>保留最近 <code>backup_keep</code>（30）份</td></tr>
+            <tr><td class="mono">data/.lock</td><td><code>{ at, tab, agent }</code> JSON</td><td>每 60 秒更新；超過 3 分鐘視為失效；關頁時刪除</td></tr>
+            <tr><td>IndexedDB <code>sf-erp/handles</code></td><td>上次選的資料夾 handle、名稱、時間</td><td>下次開啟時要求再授權一次</td></tr>
+            <tr><td>localStorage</td><td><code>sf-erp-theme</code>、<code>sf_erp.lang</code>、<code>sf-erp-owner</code></td><td>每台電腦、每個瀏覽器各自記住</td></tr>
+            <tr><td>OPFS <code>sf-erp-test</code></td><td>開發測試用的資料檔</td><td>只在 localhost 出現</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section id="flow">
+      <div class="sec-head"><span class="eyebrow">06 · DATAFLOW</span><h2>Dataflow</h2></div>
+      <p class="lede">lite 的資料流可以歸納成四條：開啟、寫入、行事曆匯入、匯出與移轉。讀取沒有獨立的流程，因為所有讀取都來自記憶體中的 <code>State</code> 快取，再由 <code>derive.ts</code> 與 <code>rules.ts</code> 在繪製時推導。</p>
+
+      <h3>A. 開啟資料夾</h3>
+      <div class="flow">
+        <div class="st"><i>1 · App</i>檢查 <code>showDirectoryPicker</code>；不支援（非 Chrome／Edge）顯示說明畫面</div>
+        <div class="st"><i>2 · IndexedDB</i>讀出上次的資料夾 handle，顯示「歡迎回來」</div>
+        <div class="st"><i>3 · 使用者點擊</i><code>requestPermission({ mode: 'readwrite' })</code></div>
+        <div class="st"><i>4 · BroadcastChannel</i>送出 hello，300 ms 內收到 busy 則以唯讀開啟</div>
+        <div class="st"><i>5 · .lock</i>別台電腦 3 分鐘內有心跳 → 詢問唯讀或強制開啟</div>
+        <div class="st"><i>6 · loadSql</i>把內嵌的 WASM data URL 解碼後初始化 sql.js</div>
+        <div class="st"><i>7 · Db.open</i>讀 <code>sf_erp.sqlite</code>（沒有就新建）、套用 migration</div>
+        <div class="st"><i>8 · LiteSource</i>快取 <code>state()</code>，進入 AppProvider</div>
+      </div>
+
+      <h3>B. 登記一筆請假（寫入路徑）</h3>
+      <p class="note">所有寫入（員工、紀錄、行事曆、設定、特休處理、匯入）都走同一個 <code>LiteSource.mutate()</code>，以 Promise 佇列序列化，不會有兩個寫入同時進行。</p>
+      <div class="tbl-wrap scroll">
+        <table class="seq">
+          <thead><tr><th>#</th><th>LeaveForm（畫面）</th><th>LiteSource</th><th>Db ＋ rules</th><th>FolderStore</th><th>磁碟</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td class="on">每次輸入呼叫 <code>checkLeave()</code> 即時試算時數、扣款、特休剩餘</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>2</td><td class="on">假別開啟雙重確認時先顯示確認畫面</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>3</td><td class="on"><code>run(() =&gt; src.saveLeave(f))</code></td><td class="on">排入寫入佇列；唯讀分頁直接拒絕</td><td></td><td></td><td></td></tr>
+            <tr><td>4</td><td></td><td></td><td class="on"><code>state()</code> 讀全表 → <code>checkLeave()</code> 再檢查一次</td><td></td><td></td></tr>
+            <tr><td>5</td><td></td><td></td><td class="on">INSERT，hours 與 deduction 一起寫入</td><td></td><td></td></tr>
+            <tr><td>6</td><td></td><td class="on"><code>db.export()</code> 取得整份位元組；更新快取並通知畫面</td><td></td><td></td><td></td></tr>
+            <tr><td>7</td><td></td><td></td><td></td><td class="on">讀舊檔；今天還沒有備份就寫 <code>backup/sf_erp-YYYYMMDD.sqlite</code> 並刪掉超過 30 份的</td><td class="on">backup/</td></tr>
+            <tr><td>8</td><td></td><td></td><td></td><td class="on"><code>createWritable()</code> 寫暫存檔，<code>close()</code> 時取代原檔</td><td class="on">sf_erp.sqlite</td></tr>
+            <tr><td>9</td><td class="on">側欄顯示「已自動儲存 · HH:MM」</td><td class="on">記下 <code>lastSaved</code></td><td></td><td></td><td></td></tr>
+            <tr><td>9′</td><td class="on err">紅色提示「存檔失敗，這次修改沒有存進資料檔」</td><td class="on err">寫入失敗：用 <code>lastSaved</code> 重開 Db，快取還原</td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>C. 匯入政府辦公日曆</h3>
+      <div class="flow">
+        <div class="st"><i>1 · 檢查大小</i>上限 10 MB</div>
+        <div class="st"><i>2 · unzip</i>DecompressionStream('deflate-raw')，邊解邊計算，總量超過 50 MB 立即停止</div>
+        <div class="st"><i>3 · 解析 XML</i>sharedStrings、styles（fills／cellXfs）、sheet1；NFKC 正規化相容表意文字</div>
+        <div class="st"><i>4 · 年度</i>標題「西元 XXXX 年」</div>
+        <div class="st"><i>5 · 放假底色</i>圖例「放假日」左側的實心底色；找不到時任何實心底色都算</div>
+        <div class="st"><i>6 · 月曆方塊</i>找出 12 個「日一二三四五六」標題列，逐格驗證日期與星期</div>
+        <div class="st"><i>7 · importCalendar</i>UPSERT 該年每一天的 <code>gov_holiday</code>；<code>override</code> 不動</div>
+      </div>
+
+      <h3>D. 匯出與移轉</h3>
+      <div class="grid3">
+        <div class="card"><b>員工主檔 → CSV</b><p class="note">UTF-8 BOM、CRLF；以 <code>= + - @</code> 開頭的文字前加單引號，避免 Excel 公式注入。</p></div>
+        <div class="card"><b>請假總覽 → Excel</b><p class="note">自製單一工作表 xlsx：凍結標題列、置中換行、依行數設列高，標題與合計列加粗。</p></div>
+        <div class="card"><b>資料檔 → 標準版</b><p class="note">「匯出給標準版」下載 <code>lastSaved</code> 位元組（<code>application/vnd.sqlite3</code>），供標準版管理者整批轉入空資料庫。</p></div>
+        <div class="card"><b>v1.2 db.json → lite</b><p class="note">上限 20 MB；單一交易轉入，時數與扣款重算，比對筆數後回報結果。</p></div>
+        <div class="card"><b>立即備份</b><p class="note">把 <code>lastSaved</code> 寫到當天的備份檔（同一天重複會覆蓋）並修剪舊備份。</p></div>
+        <div class="card"><b>v1.2 的流程（參考）</b><p class="note">瀏覽器 <code>fetch('/api/…')</code> → server.js 驗證 → 修改記憶體中的 db 物件 → 暫存檔 rename 寫回 <code>db.json</code>。</p></div>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section id="rules">
+      <div class="sec-head"><span class="eyebrow">07 · RULES ENGINE</span><h2>業務規則引擎</h2></div>
+      <p class="lede"><code>web/src/rules/rules.ts</code> 只有純函式，不碰資料庫與畫面，錯誤以 <code>Msg</code> 物件（中文原文當代碼＋參數）回傳，由畫面依語言翻譯。這讓同一份規則可以在畫面試算、資料層存檔與測試中共用。</p>
+
+      <div class="grid2">
+        <div class="card day">
+          <b>工作日與時數計算</b>
+          <div class="day-bar" role="img" aria-label="09:30 到 18:30 的工作時段，中午 12:00 到 13:30 午休">
+            <div class="seg-am">上午<br>150 分</div>
+            <div class="seg-lunch">午休</div>
+            <div class="seg-pm">下午 300 分</div>
+          </div>
+          <div class="day-ticks"><span style="left:0">09:30</span><span style="left:27.78%">12:00</span><span style="left:44.44%">13:30</span><span style="left:100%">18:30</span></div>
+          <p class="note">一般假別：時數 ＝ 請假時段與兩段工作時段的重疊分鐘（午休不算），全天 7.5 h。特休例外：上午、下午各算 4 h、全天 8 h（v3 起）。遲到：從 09:30 起算實際分鐘，1～30 分。</p>
+        </div>
+        <div class="card" style="display:grid; gap:10px">
+          <b>金額公式（以整數分鐘計算，避免浮點誤差）</b>
+          <div class="formula">時薪     = 月薪 ÷ 30 ÷ 8
+扣款     = round(分鐘 × 月薪 × (100 − 給薪%)
+                 ÷ (60 × 30 × 8 × 100))
+特休換錢 = round(分鐘 × 月薪 ÷ (60 × 30 × 8))</div>
+          <p class="note">例：月薪 36,000、病假下午 300 分、給薪 50% → 扣 375 元（<code>rules-cases.json</code> 第 1 筆）。</p>
+        </div>
+      </div>
+
+      <h3>特休：勞基法 §38 週年制</h3>
+      <div class="ladder">
+        <div class="rung"><span class="y">滿 6 個月</span><span class="d">3<small>日</small></span></div>
+        <div class="rung"><span class="y">滿 1 年</span><span class="d">7<small>日</small></span></div>
+        <div class="rung"><span class="y">滿 2 年</span><span class="d">10<small>日</small></span></div>
+        <div class="rung"><span class="y">滿 3 年</span><span class="d">14<small>日</small></span></div>
+        <div class="rung"><span class="y">滿 5 年</span><span class="d">15<small>日</small></span></div>
+        <div class="rung"><span class="y">滿 10 年</span><span class="d">16<small>日</small></span></div>
+        <div class="rung"><span class="y">每多 1 年</span><span class="d">+1<small>日</small></span></div>
+        <div class="rung max"><span class="y">上限</span><span class="d">30<small>日</small></span></div>
+      </div>
+      <p class="note">期間從 <code>annual_base_date</code> 起算，月底日期以該月最後一天處理（8/31 + 6 個月 = 2/28）。額度時數 ＝ 日數 × 8。請特休時先扣上期遞延過來的額度，再扣本期；已用量每次依紀錄即時重算，不另存。</p>
+
+      <div class="grid2">
+        <div style="display:grid; gap:10px; min-width:0">
+          <h3>到期提醒與處理</h3>
+          <div class="tbl-wrap scroll">
+            <table class="t">
+              <thead><tr><th>情況</th><th>可選處理</th></tr></thead>
+              <tbody>
+                <tr><td>本期到期前 N 天內（預設 30）且有剩餘</td><td><span class="pill acc">換錢</span> <span class="pill info">遞延一年</span> <span class="pill bad">歸零</span></td></tr>
+                <tr><td>上期已到期、尚未處理</td><td>同上</td></tr>
+                <tr><td>本期剩餘只有遞延額度</td><td><span class="pill acc">只能換錢</span></td></tr>
+                <tr><td>已離職、未結清</td><td><span class="pill acc">只能換錢</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note">選「遞延」時，遞延額度部分仍立即換錢，只有本期剩餘延到下一期。歸零會再提示可能違反 §38 第 4 項。結算後該期不能再登記特休。</p>
+        </div>
+        <div style="display:grid; gap:10px; min-width:0">
+          <h3>checkLeave() 的檢查順序</h3>
+          <ol class="note" style="color: var(--ink)">
+            <li>日期格式</li>
+            <li>該年度已匯入行事曆，且不是放假日</li>
+            <li>已選員工，且當天在職</li>
+            <li>已選假別；生理假限女性</li>
+            <li>時間格式；遲到起 09:30 且 1～30 分</li>
+            <li>其他假別 30 分對齊、訖晚於起；特休只能三種時段</li>
+            <li>時數大於 0</li>
+            <li>同員工同日時段不重疊</li>
+            <li>特休：年資滿 6 個月、該期未結算、剩餘足夠</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 -->
+    <section id="security">
+      <div class="sec-head"><span class="eyebrow">08 · SECURITY &amp; INTEGRITY</span><h2>安全與資料完整性</h2></div>
+      <div class="grid2">
+        <div class="card" style="display:grid; gap:10px">
+          <b>隔離與輸入防護</b>
+          <ul class="note" style="color: var(--ink)">
+            <li>建置時注入 CSP：<code>default-src 'none'</code>、<code>connect-src 'none'</code>，只允許內嵌腳本、樣式與 WASM；打包腳本確認沒有外部 <code>&lt;script src&gt;</code>。</li>
+            <li>上傳大小上限：xlsx 10 MB、db.json 20 MB；xlsx 解壓總量 50 MB，邊解邊計算，不信任 zip 標頭。</li>
+            <li>所有 SQL 以參數綁定執行；唯一字串拼接的是 schema 種子資料（來自程式常數）。</li>
+            <li>CSV 匯出防公式注入；i18n 查表用 <code>Object.hasOwn</code>，資料夾名稱等外部字串不會查到原型屬性。</li>
+            <li>v1.2 伺服器只綁 127.0.0.1，靜態檔路徑經 normalize 並限制在 <code>public/</code> 內。</li>
+          </ul>
+        </div>
+        <div class="card" style="display:grid; gap:10px">
+          <b>資料完整性</b>
+          <ul class="note" style="color: var(--ink)">
+            <li>寫入在 SQLite 交易中完成；<code>tx()</code> 支援巢狀，內層錯誤整批還原。</li>
+            <li>磁碟寫入以 <code>createWritable()</code> 先寫暫存檔，<code>close()</code> 才取代，中斷不會損毀舊檔。</li>
+            <li>存檔失敗時以上次成功的位元組重建 Db，畫面不會顯示沒存進去的資料。</li>
+            <li>每日第一次存檔前備份，保留 30 份；整個 <code>data/</code> 複製走即為完整備份。</li>
+            <li>外鍵 CASCADE、CHECK 約束（性別、薪資 &gt; 0、action 列舉）、UNIQUE（一期一筆結算）。</li>
+            <li>同瀏覽器第二分頁強制唯讀；跨電腦以 <code>.lock</code> 心跳警告。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section id="quality">
+      <div class="sec-head"><span class="eyebrow">09 · QUALITY</span><h2>測試與品質</h2></div>
+      <p class="lede">2026-10-21 在本 worktree 執行 <code>npx vitest run</code>：4 個檔案、74 個測試全部通過，耗時 1.37 秒；<code>npx tsc --noEmit</code> 無錯誤。</p>
+      <div class="tbl-wrap scroll">
+        <table class="t">
+          <thead><tr><th>測試檔</th><th class="num">測試數</th><th>涵蓋</th><th>結果</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">tests/rules.test.ts</td><td class="num">47</td><td>共用案例 rules-cases.json、checkLeave、特休遞延與到期提醒、checkEmployee</td><td><span class="pill ok">通過</span></td></tr>
+            <tr><td class="mono">tests/db.test.ts</td><td class="num">18</td><td>行事曆解析、手動修改、Db CRUD、migration v3、巢狀交易、損毀檔、舊版匯入</td><td><span class="pill ok">通過</span></td></tr>
+            <tr><td class="mono">tests/i18n.test.ts</td><td class="num">6</td><td>畫面中文都有包 <code>t()</code>、每條都有三語翻譯、變數一致、無多餘項目</td><td><span class="pill ok">通過</span></td></tr>
+            <tr><td class="mono">tests/xlsx.test.ts</td><td class="num">3</td><td>xlsx 輸出格式、CSV 公式注入、解壓上限</td><td><span class="pill ok">通過</span></td></tr>
+            <tr><td><b>合計</b></td><td class="num"><b>74</b></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="grid3">
+        <div class="card"><b>有測到</b><p class="note">規則引擎、資料層、匯入匯出、翻譯完整性。測試用的政府日曆由 <code>tests/helpers/govCalendar.ts</code> 產生，不使用正式資料。</p></div>
+        <div class="card"><b>沒有測到</b><p class="note">React 頁面與互動、<code>FolderStore</code>（備份修剪、鎖、寫入失敗還原）、<code>claimTab</code>、打包後的單檔 HTML 能否以 file:// 開啟。</p></div>
+        <div class="card"><b>跨語言契約</b><p class="note"><code>shared/rules-cases.json</code> 有 6 組、34 個案例，但只涵蓋計算函式，見發現 F2。</p></div>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section id="findings">
+      <div class="sec-head"><span class="eyebrow">10 · FINDINGS</span><h2>發現與風險</h2></div>
+      <p class="lede">依影響程度排序。沒有發現會造成資料遺失或錯帳的程式錯誤；以下多為一致性、可維護性與規模上的問題。</p>
+      <div class="findings">
+        <article class="fd s-mid"><div class="sev"></div><div class="body">
+          <div class="hd"><span class="id">F1</span><h3>本機開發套件版本與宣告不符</h3><span class="pill warn">中</span></div>
+          <p class="ev"><code>npm ls</code>：vite 5.4.11（宣告 ^7.3.7）、@vitejs/plugin-react 4.3.4（^5.2.0）、vite-plugin-singlefile 2.0.3（^2.3.4）、vitest 2.1.8（lock 為 4.1.11）。目前的測試通過與建置結果，不能代表 package.json 宣告的工具鏈。</p>
+          <p class="fix"><b>建議</b>在 <code>web/</code> 執行 <code>npm ci</code> 後重跑測試與 <code>npm run lite</code>，確認 Vite 7 下單檔內嵌與 CSP 注入仍正常。</p>
+        </div></article>
+
+        <article class="fd s-mid"><div class="sev"></div><div class="body">
+          <div class="hd"><span class="id">F2</span><h3>跨語言規則測試案例只涵蓋計算函式</h3><span class="pill warn">中</span></div>
+          <p class="ev">規格要求 TypeScript 與 Java 兩份規則通過同一份 <code>rules-cases.json</code>。目前案例只有 leaveMinutes、deduction、cashOut、annualDaysForYears、annualPeriod、seniority；最容易寫錯的 <code>checkLeave</code> 防呆順序、<code>annualStatus</code> 遞延扣用、<code>settlementsDue</code> 與 <code>buildSettlement</code> 都只寫在 TS 測試裡。</p>
+          <p class="fix"><b>建議</b>動工標準版前，把這四個函式的情境（含錯誤訊息代碼）搬進 JSON，讓 Java 端有同樣的驗收標準。</p>
+        </div></article>
+
+        <article class="fd s-mid"><div class="sev"></div><div class="body">
+          <div class="hd"><span class="id">F3</span><h3>規格文件落後實作</h3><span class="pill warn">中</span><span class="pill ok">已處理 10/21</span></div>
+          <ul class="ev">
+            <li>§15 <code>annual_settlement</code> 沒有 <code>deferred_hours</code>；<code>calendar_day.override_reason</code>、<code>annual_track_from</code>、<code>day_reasons</code> 都未列入。</li>
+            <li>§3、§8 寫特休最小單位「上午／下午／全天」並以 2.5／5／7.5 h 計；程式自 v3 起改為半天 4 h、全天 8 h。</li>
+            <li>§11 寫請假總覽「匯出 CSV」，實作為匯出 Excel（xlsx）。</li>
+            <li>§7 手動改上班日／放假日沒有提到「必須填原因」。</li>
+          </ul>
+          <p class="fix"><b>處理</b>已依 <code>schema.ts</code> 與 <code>rules.ts</code> 更新 <code>docs/規格.md</code> §2.1、§3、§6、§7、§8、§9、§11、§12、§13、§15、§16，並加上修訂說明。</p>
+        </div></article>
+
+        <article class="fd s-low"><div class="sev"></div><div class="body">
+          <div class="hd"><span class="id">F4</span><h3>刪除員工會一併刪除特休換錢紀錄</h3><span class="pill info">低</span><span class="pill ok">已處理 10/21</span></div>
+          <p class="ev"><code>annual_settlement.employee_id</code> 為 ON DELETE CASCADE。規格只說刪除員工要連帶刪除「紀錄」；換錢金額會列入薪資加項，刪除後就無從查核。</p>
+          <p class="fix"><b>處理</b>改為以離職日處理：<code>Db.deleteEmployee()</code> 遇到有出缺勤或特休處理紀錄的員工會拒絕；畫面上按「刪除」時說明原因並提供「填寫離職日」。只有完全沒有紀錄的員工可以刪除。</p>
+        </div></article>
+
+        <article class="fd s-low"><div class="sev"></div><div class="body">
+          <div class="hd"><span class="id">F5</span><h3>編輯舊紀錄時以「目前薪資」重算扣款</h3><span class="pill info">低</span><span class="pill ok">已處理 10/21</span></div>
+          <p class="ev"><code>Db.saveLeave()</code> 編輯時呼叫 <code>checkLeave()</code>，以員工當下的 <code>salary</code> 重算 <code>deduction</code>。調薪後若修改調薪前的紀錄（例如只改理由），該筆扣款會變動。v1.2 行為相同，但 v1.2 註解寫明「薪資變動不回溯」。</p>
+          <p class="fix"><b>處理</b>migration v5 在 <code>leave_record</code> 新增 <code>salary</code>（登記當時的月本薪），編輯時以該值重算；改成別的員工才用該員工目前的薪資。既有紀錄以升級時的薪資補上。</p>
+        </div></article>
+
+        <article class="fd s-low"><div class="sev"></div><div class="body">
+          <div class="hd"><span class="id">F6</span><h3>每次存檔的讀寫量隨資料量線性成長</h3><span class="pill info">低</span></div>
+          <p class="ev">一次寫入會：<code>state()</code> 全表讀取兩次（檢查前、寫入後）、<code>export()</code> 整份資料庫、讀出整份舊檔、讀出整份當日備份檔只為了判斷它是否存在、再整份寫回。以 50 名員工、每人每年 30 筆、10 年估算約 1.5 萬筆紀錄、數 MB，仍在可接受範圍。</p>
+          <p class="fix"><b>建議</b>短期可把「備份是否存在」改為 <code>getFileHandle</code> 不讀內容，並記住當天已備份；資料量明顯成長時再考慮增量讀取。</p>
+        </div></article>
+
+        <article class="fd s-low"><div class="sev"></div><div class="body">
+          <div class="hd"><span class="id">F7</span><h3>多台電腦共用資料夾只有建議性鎖</h3><span class="pill info">低</span></div>
+          <p class="ev"><code>.lock</code> 每 60 秒心跳、3 分鐘失效，使用者可按「我確定沒有人在用」強制開啟；兩邊同時寫入時後存者覆蓋先存者。同瀏覽器的分頁判定只等 300 ms，兩個分頁幾乎同時開啟時可能都成為可寫入。規格已註明「同一時間只讓一台電腦開啟」。</p>
+          <p class="fix"><b>建議</b>存檔前比對檔案的 <code>lastModified</code> 與上次讀取時是否相同，不同就停止並提示，能把覆蓋變成可見的衝突。</p>
+        </div></article>
+
+        <article class="fd s-info"><div class="sev"></div><div class="body">
+          <div class="hd"><span class="id">F8</span><h3>舊版程式仍是根目錄的預設啟動方式</h3><span class="pill mute">資訊</span></div>
+          <p class="ev">根目錄 <code>npm start</code> 與 <code>start.bat</code> 仍啟動 v1.2；規則有兩份實作（<code>public/shared/rules.js</code> 與 <code>web/src/rules/rules.ts</code>），特休時數已經分歧（v1.2 以實際重疊的 2.5／5／7.5 h 計，v2.0 以 4／8 h 計）。</p>
+          <p class="fix"><b>建議</b>確認還有沒有人在用 v1.2；完成移轉後把它搬到 <code>legacy/</code> 或移除，避免誤啟動舊版。</p>
+        </div></article>
+
+        <article class="fd s-info"><div class="sev"></div><div class="body">
+          <div class="hd"><span class="id">F9</span><h3>標準版尚未開始</h3><span class="pill mute">資訊</span></div>
+          <p class="ev">repo 中沒有 Java 專案、PostgreSQL migration、docker compose 或 <code>ApiSource</code>。前端已透過 <code>DataSource</code> 介面與 <code>edition</code> 欄位預留切換點；<code>app-context</code> 中部分功能（備份、資料夾資訊）直接依賴 <code>LiteSource</code>。</p>
+          <p class="fix"><b>建議</b>先定義 REST 介面與 <code>ApiSource</code>，以 F2 補強後的 JSON 案例驅動 Java 規則開發。</p>
+        </div></article>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section id="recs">
+      <div class="sec-head"><span class="eyebrow">11 · NEXT STEPS</span><h2>建議</h2></div>
+      <ol class="recs">
+        <li><span class="pill warn">立即</span><span>在 <code>web/</code> 執行 <code>npm ci</code>，於宣告版本下重跑測試與 lite 打包（F1）。</span></li>
+        <li><span class="pill ok">已完成</span><span>員工改以離職日處理不刪除（F4）、編輯舊紀錄以當時薪資計算（F5）、規格文件更新（F3）。</span></li>
+        <li><span class="pill info">近期</span><span>把 checkLeave、annualStatus、settlementsDue、buildSettlement 的情境補進 <code>rules-cases.json</code>（F2）。</span></li>
+        <li><span class="pill info">近期</span><span>為 <code>FolderStore</code> 加測試（可用記憶體版的 FileSystemDirectoryHandle），並在存檔前比對檔案修改時間（F6、F7）。</span></li>
+        <li><span class="pill mute">規劃</span><span>標準版：先完成 ApiSource 與 REST 介面，再實作 Spring Boot 後端（F9）；v1.2 移轉完成後封存舊程式（F8）。</span></li>
+      </ol>
+    </section>
+
+    <!-- 12 -->
+    <section id="appendix">
+      <div class="sec-head"><span class="eyebrow">12 · APPENDIX</span><h2>附錄與方法</h2></div>
+      <div class="grid2">
+        <div class="card" style="display:grid; gap:8px">
+          <b>分析方法</b>
+          <ul class="note" style="color: var(--ink)">
+            <li>逐檔閱讀 <code>web/src</code> 的資料層、規則、殼層與頁面，以及 v1.2 的 <code>server.js</code>、<code>lib/</code>、<code>public/</code>。</li>
+            <li>對照 <code>docs/規格.md</code> v2.0 檢查落差。</li>
+            <li>執行 <code>vitest run</code>、<code>tsc --noEmit</code>、<code>npm ls</code> 取得實際狀態。</li>
+            <li>行數以 <code>wc -l</code> 計算，不含 <code>package-lock.json</code> 與發佈 zip。</li>
+          </ul>
+        </div>
+        <div class="card" style="display:grid; gap:8px">
+          <b>限制</b>
+          <ul class="note" style="color: var(--ink)">
+            <li>repo 不含正式資料（<code>data/</code> 已列入 .gitignore），本報告沒有分析實際的資料量與分布；F6 的規模為估算。</li>
+            <li>沒有在瀏覽器中實際操作 lite，畫面行為以原始碼判讀。</li>
+            <li>標準版只有規格，相關描述皆為規劃內容。</li>
+          </ul>
+        </div>
+      </div>
+      <h3>v1.2 REST API（參考）</h3>
+      <div class="tbl-wrap scroll">
+        <table class="t">
+          <thead><tr><th>方法</th><th>路徑</th><th>用途</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">GET</td><td class="mono">/api/state</td><td>回傳今天、假別、員工、紀錄、行事曆</td></tr>
+            <tr><td class="mono">POST · PUT · DELETE</td><td class="mono">/api/employees[/:id]</td><td>員工新增、修改、刪除（連帶刪除紀錄）</td></tr>
+            <tr><td class="mono">POST · PUT · DELETE</td><td class="mono">/api/leaves[/:id]</td><td>請假紀錄新增、修改、刪除</td></tr>
+            <tr><td class="mono">POST</td><td class="mono">/api/calendar/upload</td><td>上傳辦公日曆表 xlsx（原始位元組）</td></tr>
+            <tr><td class="mono">PUT · DELETE</td><td class="mono">/api/calendar/day/:date</td><td>手動改上班日／放假日、還原</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>lite 畫面路由</h3>
+      <div class="tbl-wrap scroll">
+        <table class="t">
+          <thead><tr><th>Hash</th><th>頁面</th><th>參數</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">#/home</td><td>首頁</td><td>—</td></tr>
+            <tr><td class="mono">#/quick</td><td>快速登記</td><td class="mono">date, emp</td></tr>
+            <tr><td class="mono">#/attendance</td><td>出缺勤月曆</td><td class="mono">ym, sel</td></tr>
+            <tr><td class="mono">#/employees[/:id]</td><td>員工主檔／個人頁</td><td class="mono">y</td></tr>
+            <tr><td class="mono">#/overview</td><td>請假總覽</td><td>年度、月份</td></tr>
+            <tr><td class="mono">#/settings</td><td>制度與設定</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <footer>SF ERP 系統分析報告 · 2026-10-21 · 依 commit ac039e1 的原始碼撰寫</footer>
+    </section>
+  </main>
+</div>

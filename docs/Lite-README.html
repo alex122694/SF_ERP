@@ -1,0 +1,328 @@
+<title>SF ERP Lite 使用說明</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* 版面：單欄手冊（約 780px），開頭放需求一覽與資料夾結構，之後依「安裝 → 每天使用 → 資料 → 疑難排解 → 開發」排列；離線開啟時字型退回系統正黑體 */
+:root {
+  --bg: #f3f7f6;
+  --surface: #ffffff;
+  --raised: #e9f1ef;
+  --ink: #10201d;
+  --muted: #4f6a65;
+  --line: #d3e1de;
+  --accent: #0f7f73;
+  --accent-soft: #dcf0ec;
+  --warn: #9a5c00;
+  --warn-soft: #fbefd9;
+  --bad: #b3261e;
+  --bad-soft: #fbe4e2;
+  --ok: #2b7a3a;
+  --ok-soft: #e3f3e6;
+  --font-display: "IBM Plex Sans", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-body: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1412; --surface: #101e1b; --raised: #16302b; --ink: #e2eeeb; --muted: #8eaaa4; --line: #23423c;
+    --accent: #5cc6b8; --accent-soft: #12362f; --warn: #e5a640; --warn-soft: #33260e; --bad: #f08a80; --bad-soft: #3a1714;
+    --ok: #7cc98b; --ok-soft: #15301c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1412; --surface: #101e1b; --raised: #16302b; --ink: #e2eeeb; --muted: #8eaaa4; --line: #23423c;
+  --accent: #5cc6b8; --accent-soft: #12362f; --warn: #e5a640; --warn-soft: #33260e; --bad: #f08a80; --bad-soft: #3a1714;
+  --ok: #7cc98b; --ok-soft: #15301c;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 0.9375rem; line-height: 1.75; -webkit-font-smoothing: antialiased; }
+table { font-size: inherit; color: inherit; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.3; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+ul, ol { margin: 0; padding-left: 1.3em; }
+li + li { margin-top: 0.35em; }
+code, kbd, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code { background: var(--raised); padding: 0.08em 0.4em; border-radius: 4px; overflow-wrap: anywhere; }
+kbd { border: 1px solid var(--line); border-bottom-width: 2px; background: var(--surface); padding: 0 0.45em; border-radius: 4px; white-space: nowrap; }
+.btnlike { display: inline-block; font-weight: 500; font-size: 0.85em; padding: 0 0.55em; border-radius: 6px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+
+.wrap { max-width: 820px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 80px; display: grid; gap: 56px; }
+
+header.top { display: grid; gap: 18px; padding-bottom: 24px; border-bottom: 2px solid var(--ink); }
+.brand { display: flex; gap: 12px; align-items: center; }
+.logo { width: 40px; height: 40px; border-radius: 10px; background: #5cc6b8; color: #06201d; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; }
+.brand span { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
+header.top h1 { font-size: 2.25rem; font-weight: 700; }
+header.top p { color: var(--muted); max-width: 62ch; }
+nav.jump { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; }
+nav.jump a { text-decoration: none; }
+nav.jump a:hover { text-decoration: underline; }
+
+section { display: grid; gap: 18px; min-width: 0; scroll-margin-top: 16px; }
+section > h2 { font-size: 1.5rem; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.05rem; font-weight: 600; margin-top: 6px; }
+.muted { color: var(--muted); }
+.small { font-size: 0.85rem; }
+
+.req { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.req div { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; align-content: start; }
+.req b { font-family: var(--font-display); font-size: 1.05rem; }
+.req span { font-size: 0.8rem; color: var(--muted); }
+.req .k { font-size: 0.72rem; letter-spacing: 0.06em; color: var(--accent); font-family: var(--font-mono); }
+
+.tbl { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+table.t th, table.t td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { font-family: var(--font-display); font-weight: 600; font-size: 0.78rem; color: var(--muted); background: var(--raised); white-space: nowrap; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t td:first-child { white-space: nowrap; font-weight: 500; }
+
+.pill { display: inline-block; font-size: 0.72rem; font-weight: 500; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+
+.tree { font-family: var(--font-mono); font-size: 0.82rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; overflow-x: auto; white-space: pre; line-height: 1.8; }
+.tree .c { color: var(--muted); }
+.tree .d { color: var(--accent); font-weight: 500; }
+
+ol.steps { list-style: none; padding: 0; display: grid; gap: 0; counter-reset: s; }
+ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 14px; padding-bottom: 20px; position: relative; margin: 0; }
+ol.steps > li::before { content: counter(s); width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--surface); font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; position: relative; z-index: 1; }
+ol.steps > li:not(:last-child)::after { content: ""; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: var(--line); }
+ol.steps > li > div { display: grid; gap: 4px; min-width: 0; padding-top: 3px; }
+ol.steps b.h { font-family: var(--font-display); font-weight: 600; }
+
+.pages { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.pg { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.pg b { font-family: var(--font-display); font-weight: 600; }
+.pg p { font-size: 0.85rem; color: var(--muted); }
+
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 0.875rem; display: grid; gap: 4px; }
+.callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+
+.faq { display: grid; gap: 10px; }
+.faq > div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; display: grid; gap: 4px; min-width: 0; }
+.faq b { font-weight: 500; }
+.faq p { font-size: 0.875rem; color: var(--muted); }
+
+pre.cmd { font-family: var(--font-mono); font-size: 0.82rem; background: var(--raised); border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 0; line-height: 1.7; }
+
+footer { font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+
+@media (max-width: 560px) {
+  header.top h1 { font-size: 1.75rem; }
+  .wrap { gap: 44px; padding-block: 24px 56px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><div class="logo">SF</div><span>SF ERP lite · 版本 2.0.0</span></div>
+    <h1>SF ERP Lite 使用說明</h1>
+    <p>SF ERP lite 是給一位人資在一台電腦上使用的出缺勤與請假管理工具：登記請假與遲到、自動算出扣款、依勞基法追蹤特休與到期處理。不用安裝、不用網路、不用登入，資料只存在你選的資料夾裡。</p>
+    <nav class="jump" aria-label="本頁目錄">
+      <a href="#requirements">環境需求</a>
+      <a href="#install">第一次安裝</a>
+      <a href="#daily">每天使用</a>
+      <a href="#tasks">常見作業</a>
+      <a href="#data">資料與備份</a>
+      <a href="#multi">多分頁與多台電腦</a>
+      <a href="#legacy">從舊版移轉</a>
+      <a href="#trouble">疑難排解</a>
+      <a href="#dev">開發與打包</a>
+    </nav>
+  </header>
+
+  <section id="requirements">
+    <h2>環境需求</h2>
+    <div class="req">
+      <div><span class="k">瀏覽器</span><b>Chrome 或 Edge</b><span>桌面版，建議最新版（至少 103）</span></div>
+      <div><span class="k">作業系統</span><b>Windows 10／11</b><span>macOS、Linux 的桌面版 Chrome 也可以</span></div>
+      <div><span class="k">網路</span><b>不需要</b><span>完全離線運作，不會上傳任何資料</span></div>
+      <div><span class="k">安裝</span><b>不需要</b><span>解壓縮即可用，不需系統管理員權限</span></div>
+      <div><span class="k">磁碟空間</span><b>約 50 MB 以內</b><span>程式 1.3 MB；資料檔通常幾 MB，另有最多 30 份備份</span></div>
+      <div><span class="k">另外準備</span><b>辦公日曆表 xlsx</b><span>行政院人事行政總處每年公布</span></div>
+    </div>
+
+    <h3>瀏覽器支援</h3>
+    <div class="tbl">
+      <table class="t">
+        <thead><tr><th>瀏覽器</th><th>可否使用</th><th>說明</th></tr></thead>
+        <tbody>
+          <tr><td>Microsoft Edge（桌面）</td><td><span class="pill ok">可以</span></td><td>Windows 內建，建議優先使用</td></tr>
+          <tr><td>Google Chrome（桌面）</td><td><span class="pill ok">可以</span></td><td></td></tr>
+          <tr><td>Firefox、Safari</td><td><span class="pill bad">不行</span></td><td>不支援讀寫電腦上的資料夾，開啟後會顯示「這個瀏覽器不能存取資料夾」</td></tr>
+          <tr><td>手機、平板瀏覽器</td><td><span class="pill bad">不行</span></td><td>同上</td></tr>
+          <tr><td>無痕視窗</td><td><span class="pill warn">不建議</span></td><td>關閉後瀏覽器不會記住資料夾，每次都要重新選擇</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small muted">lite 用到瀏覽器的資料夾讀寫（File System Access API）、IndexedDB、BroadcastChannel 與檔案解壓縮功能，Chrome／Edge 103 以後的版本都具備。</p>
+
+    <h3>資料夾放哪裡</h3>
+    <ul>
+      <li>建議放在本機硬碟的固定位置，例如 <code>D:\SF ERP</code>。移動資料夾後，下次開啟要重新選擇一次。</li>
+      <li>可以放在雲端同步資料夾（OneDrive 等）或網路磁碟，但同一時間只能有一台電腦開啟，見「<a href="#multi">多分頁與多台電腦</a>」。</li>
+    </ul>
+  </section>
+
+  <section id="install">
+    <h2>第一次安裝</h2>
+    <p>解壓縮 <code>SF ERP-lite.zip</code> 後會得到這個資料夾：</p>
+    <div class="tree"><span class="d">SF ERP\</span>
+├─ index.html        <span class="c">程式本體（單一檔案，用 Edge／Chrome 開啟）</span>
+├─ 使用說明.txt
+└─ <span class="d">data\</span>             <span class="c">第一次開啟時選這個資料夾</span>
+   ├─ sf_erp.sqlite  <span class="c">資料檔，系統自動建立</span>
+   ├─ <span class="d">backup\</span>        <span class="c">每天自動備份，保留 30 份</span>
+   └─ .lock          <span class="c">使用中標記，關閉頁面時自動刪除</span></div>
+
+    <ol class="steps">
+      <li><div><b class="h">把 SF ERP 資料夾放到固定位置</b><span class="muted small">例如 <code>D:\SF ERP</code>。之後不要再移動。</span></div></li>
+      <li><div><b class="h">用 Edge 或 Chrome 開啟 index.html</b><span class="muted small">在檔案總管對 <code>index.html</code> 按右鍵 →「開啟檔案」→ 選 Microsoft Edge 或 Google Chrome。可以把這個頁面加入書籤，之後從書籤開啟。</span></div></li>
+      <li><div><b class="h">按「選擇資料夾」，選 SF ERP\data</b><span class="muted small">瀏覽器問「要允許編輯檔案嗎？」時選「允許」。系統會在裡面建立 <code>sf_erp.sqlite</code> 與 <code>backup\</code>。</span></div></li>
+      <li><div><b class="h">匯入今年的辦公日曆表</b><span class="muted small">到「制度與設定」→「行事曆」上傳人事行政總處的「政府行政機關辦公日曆表.xlsx」。還沒匯入的年度不能登記請假。</span></div></li>
+      <li><div><b class="h">新增員工</b><span class="muted small">到「員工」按「新增員工」，填姓名、性別、月本薪、到職日。特休年資起算日不填時等於到職日。</span></div></li>
+      <li><div><b class="h">（選用）調整制度設定</b><span class="muted small">在「制度與設定」設定各假別是否要雙重確認、特休到期前幾天提醒（14／30／60 天）、手動改放假日的原因快選。</span></div></li>
+    </ol>
+    <div class="callout"><b>之後每次開啟</b><span>開啟 <code>index.html</code>，畫面顯示「歡迎回來」與上次的資料夾，按 <span class="btnlike">允許存取並開啟</span> 即可。瀏覽器基於安全規定，每次都會要你按一次允許。</span></div>
+  </section>
+
+  <section id="daily">
+    <h2>每天使用</h2>
+    <p>左側選單有六個頁面。側欄下方會顯示資料檔名稱與「已自動儲存 · 時間」；每次修改都會立即存檔，不需要另外按儲存。</p>
+    <div class="pages">
+      <div class="pg"><b>首頁</b><p>今天是上班日或放假日、在職人數、本月請假時數與扣款、今天不在座位的人、本週每天請假人數，以及待處理的特休到期提醒。</p></div>
+      <div class="pg"><b>快速登記</b><p>一張假單登記一天：日期、員工、假別、時段、理由。右側即時試算時數、時薪、扣除金額與特休剩餘。</p></div>
+      <div class="pg"><b>出缺勤月曆</b><p>月曆或人員矩陣檢視。點一下日期，右側列出當天紀錄，可以編輯、刪除、在這天登記，或把這天改為放假日／上班日。</p></div>
+      <div class="pg"><b>員工</b><p>搜尋、依在職狀態篩選、排序、匯出 CSV。點進個人頁可看年資、特休進度、全年假勤圖、最近紀錄與特休週年紀錄。</p></div>
+      <div class="pg"><b>請假總覽</b><p>選年度與月份（或全年），看各假別合計與每位員工的時數、扣款；可展開明細，並匯出 Excel。</p></div>
+      <div class="pg"><b>制度與設定</b><p>上班時間、扣款公式、假別與特休核給表；行事曆匯入；資料檔與備份；匯入舊版資料。</p></div>
+    </div>
+
+    <h3>登記規則重點</h3>
+    <div class="tbl">
+      <table class="t">
+        <thead><tr><th>假別</th><th>給薪</th><th>時段</th><th>限制</th></tr></thead>
+        <tbody>
+          <tr><td>特休</td><td>全薪</td><td>全天（8 h）、上午或下午（各 4 h）</td><td>剩餘額度不足、或該期已結算時不能登記</td></tr>
+          <tr><td>事假</td><td>不支薪</td><td>每 30 分鐘一格</td><td>沒有請假的缺勤也以事假登記</td></tr>
+          <tr><td>病假</td><td>半薪</td><td>每 30 分鐘一格</td><td></td></tr>
+          <tr><td>生理假</td><td>半薪</td><td>每 30 分鐘一格</td><td>只有女性員工可以選</td></tr>
+          <tr><td>公假</td><td>全薪</td><td>每 30 分鐘一格</td><td></td></tr>
+          <tr><td>遲到</td><td>不支薪</td><td>從 09:30 起算，填實際到班時間</td><td>最多 30 分鐘；超過請改登記事假</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="small">
+      <li>上班時間 09:30～18:30，午休 12:00～13:30。請假時數只算與上班時段重疊的部分。</li>
+      <li>扣除金額 ＝ 時數 × 時薪 ×（1 − 給薪比例），時薪 ＝ 月本薪 ÷ 30 ÷ 8，每筆四捨五入到元。</li>
+      <li>放假日、員工到職前或離職後、同一人同一天時段重疊，都不能送出；錯誤會直接顯示在假單上。</li>
+      <li>特休數字後面的「天」可以點一下切換成小時顯示。</li>
+    </ul>
+  </section>
+
+  <section id="tasks">
+    <h2>常見作業</h2>
+    <div class="faq">
+      <div><b>員工離職</b><p>到員工個人頁按「編輯資料」，填寫離職日。離職後不會出現在登記名單，出缺勤紀錄、扣款金額與特休處理紀錄都會保留。剩餘特休會出現在首頁提醒，只能選換錢。</p></div>
+      <div><b>刪除員工</b><p>只有沒有任何紀錄的員工（例如建錯的資料）可以刪除。已有出缺勤或特休處理紀錄的員工按「刪除」時，系統會說明不能刪除，並提供「填寫離職日」。</p></div>
+      <div><b>修改或刪除一筆紀錄</b><p>到出缺勤月曆點那一天，在右側按「編輯」或「刪除」。編輯時扣款以該筆登記當時的月本薪重新計算，之後的調薪不會影響舊紀錄。</p></div>
+      <div><b>特休到期處理</b><p>週年到期前會在首頁提醒（預設 30 天內）。可選「換錢」（剩餘時數 × 當下時薪，列入下一期薪資）、「遞延一年」或「歸零」。遞延過來的額度到期時只能換錢；選歸零會再提醒一次可能違反勞基法 §38 第 4 項。</p></div>
+      <div><b>颱風假、公司自訂休假、補班</b><p>到出缺勤月曆點那一天，按「改為放假日」或「改為上班日」，並填寫原因（可從快選清單選）。改過的日子標示「手動」，可以「還原為政府日曆」。當天已有紀錄時要先刪除紀錄才能改為放假日。</p></div>
+      <div><b>每年 10 月匯入明年行事曆</b><p>每年 10 月 1 日起，首頁會提醒上傳下一年度的辦公日曆表。重新上傳同一年度時，手動改過的日子不會被覆蓋。</p></div>
+      <div><b>匯出報表</b><p>請假總覽可匯出 Excel（每位員工一列，最後一列為合計）；員工主檔可匯出 CSV，用 Excel 開啟不會亂碼。</p></div>
+    </div>
+  </section>
+
+  <section id="data">
+    <h2>資料與備份</h2>
+    <ul>
+      <li><b>自動備份：</b>每天第一次存檔前，系統把前一份資料檔複製到 <code>data\backup\sf_erp-YYYYMMDD.sqlite</code>，保留最近 30 份。</li>
+      <li><b>立即備份：</b>「制度與設定」→「資料檔與備份」→ <span class="btnlike">立即備份</span>，寫入今天的備份檔（同一天重複會覆蓋）。</li>
+      <li><b>完整備份：</b>關閉 SF ERP 後，把整個 <code>data</code> 資料夾複製到隨身碟或其他位置。</li>
+      <li><b>還原：</b>關閉所有 SF ERP 分頁，把 <code>sf_erp.sqlite</code> 改名保留，再把要還原的備份檔複製一份到 <code>data\</code> 並改名為 <code>sf_erp.sqlite</code>，然後重新開啟。</li>
+      <li><b>換資料夾：</b>「制度與設定」→ <span class="btnlike">換資料夾</span>，回到選擇資料夾的畫面。</li>
+      <li><b>存檔失敗時：</b>畫面會顯示紅色提示，這次修改不會寫入，資料檔維持上一次成功存檔的內容。請確認磁碟空間與資料夾權限後再操作一次。</li>
+    </ul>
+    <div class="callout warn"><b>資料只在這個資料夾裡</b><span>刪除或格式化 <code>data</code> 資料夾就會失去所有資料。請定期把整個資料夾另外複製一份。</span></div>
+  </section>
+
+  <section id="multi">
+    <h2>多分頁與多台電腦</h2>
+    <ul>
+      <li><b>同一個瀏覽器開第二個分頁：</b>第二個分頁會自動變成唯讀，畫面上方有黃色提示。請回到第一個分頁操作。</li>
+      <li><b>別台電腦開啟同一個資料夾：</b>如果 3 分鐘內有另一台電腦或另一個瀏覽器在使用，會顯示「這個資料夾可能正在別處使用」，可選擇「唯讀開啟」或「我確定沒有人在用，開啟」。</li>
+      <li>兩邊同時修改時，後存的會蓋掉先存的。同一時間只讓一台電腦開啟同一個 <code>data</code> 資料夾。</li>
+    </ul>
+  </section>
+
+  <section id="legacy">
+    <h2>從舊版移轉</h2>
+    <ol>
+      <li>先備份舊版的 <code>data\db.json</code>。</li>
+      <li>在新的空白資料夾開啟 lite，不要先新增員工或紀錄。</li>
+      <li>「制度與設定」→「匯入舊版資料」→ <span class="btnlike">選擇 db.json</span>。</li>
+      <li>系統會轉入員工、紀錄、各年度行事曆與手動修改，完成後顯示筆數。時數與扣款依目前規則重新計算；任何一筆有問題就整批取消，資料檔不會留下一半的資料。</li>
+    </ol>
+    <p class="small muted">只能匯入一次，且只能匯入到沒有員工與紀錄的資料檔。要給標準版使用時，可用「匯出給標準版」下載目前的 <code>sf_erp.sqlite</code>。</p>
+  </section>
+
+  <section id="trouble">
+    <h2>疑難排解</h2>
+    <div class="faq">
+      <div><b>顯示「這個瀏覽器不能存取資料夾」</b><p>目前的瀏覽器不支援。請在檔案總管對 <code>index.html</code> 按右鍵 →「開啟檔案」→ 選 Edge 或 Chrome。</p></div>
+      <div><b>顯示「沒有取得資料夾的讀寫權限」</b><p>瀏覽器詢問時選了「不允許」。再按一次 <span class="btnlike">允許存取並開啟</span>，並選「允許」。</p></div>
+      <div><b>顯示「上次的資料夾無法開啟」</b><p>資料夾被移動、改名或刪除。按 <span class="btnlike">選擇其他資料夾</span>，選新的位置。</p></div>
+      <div><b>畫面上方顯示這個分頁是唯讀的</b><p>同一個瀏覽器已有另一個 SF ERP 分頁。回到那個分頁操作，或把它關閉後重新整理這一頁。</p></div>
+      <div><b>不能登記，提示「請先匯入 XXXX 年行事曆」</b><p>到「制度與設定」上傳該年度的辦公日曆表。</p></div>
+      <div><b>上傳行事曆時顯示「無法辨識辦公日曆表格式」</b><p>請使用人事行政總處公布的原始 xlsx，不要另存或修改版面。檔案上限 10 MB。</p></div>
+      <div><b>顯示「資料檔損毀或不是 SF ERP 的資料檔」</b><p>依「<a href="#data">資料與備份</a>」的步驟，從 <code>backup\</code> 還原最近一份備份。</p></div>
+    </div>
+  </section>
+
+  <section id="dev">
+    <h2>開發與打包</h2>
+    <p class="muted small">這一節給負責維護程式的人。一般使用者不需要。</p>
+    <div class="tbl">
+      <table class="t">
+        <thead><tr><th>項目</th><th>需求</th></tr></thead>
+        <tbody>
+          <tr><td>Node.js</td><td>20.19 以上或 22.12 以上（Vite 7 的要求），附帶 npm</td></tr>
+          <tr><td>原始碼</td><td><code>web/</code>：React 18、TypeScript 5、Vite 7、sql.js、Vitest 4</td></tr>
+          <tr><td>瀏覽器</td><td>Chrome 或 Edge，用來測試資料夾讀寫</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>在 <code>web</code> 資料夾執行：</p>
+    <div class="tbl">
+      <table class="t">
+        <thead><tr><th>指令</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td><code>npm ci</code></td><td>依 <code>package-lock.json</code> 安裝套件（第一次或套件版本不符時）</td></tr>
+          <tr><td><code>npm run dev</code></td><td>開發伺服器（http://localhost:5173）；本機開發時多一個「使用瀏覽器內部儲存（測試用）」，不會碰到任何資料夾，並可在設定頁載入範例資料</td></tr>
+          <tr><td><code>npm test</code></td><td>執行單元測試（規則、資料庫、xlsx、翻譯完整性）</td></tr>
+          <tr><td><code>npm run build</code></td><td>型別檢查並建置單一檔 <code>dist/index.html</code>（JS、CSS、WASM 全部內嵌，含 CSP）</td></tr>
+          <tr><td><code>npm run lite</code></td><td>建置並更新 <code>release/SF ERP-lite/SF ERP/</code>（index.html、data\、使用說明.txt；不會清空 data）</td></tr>
+          <tr><td><code>npm run package</code></td><td>同上，另外打包成 <code>release/SF ERP-lite.zip</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <pre class="cmd">cd web
+npm ci
+npm test
+npm run package</pre>
+    <p class="small muted">開發與驗證一律使用測試資料，不要直接拿正式的 <code>data</code> 資料夾測試。系統規格見 <code>docs/規格.md</code>。</p>
+  </section>
+
+  <footer>SF ERP lite 2.0.0 · 使用說明 · 2026-10-21</footer>
+</div>

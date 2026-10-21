@@ -14,7 +14,7 @@ export interface DataSource {
   readonly readOnly: boolean;
   state(): State;
   saveEmployee(input: EmployeeInput, id?: number): Promise<number>;
-  deleteEmployee(id: number): Promise<number>;
+  deleteEmployee(id: number): Promise<void>;
   saveLeave(input: LeaveInput, id?: number): Promise<number>;
   deleteLeave(id: number): Promise<void>;
   importCalendar(file: File): Promise<{ year: number; holidays: number; keptOverrides: number }>;

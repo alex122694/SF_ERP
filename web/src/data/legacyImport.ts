@@ -55,8 +55,8 @@ export function importLegacyJson(db: Db, text: string): LegacyImportResult {
       const minutes = recordMinutes(l.type, l.start, l.end);
       if (minutes <= 0) throw new UserError(msg('紀錄 {0} 的日期或時間不正確', [l.id]));
       const reason = typeof l.reason === 'string' ? l.reason.trim().slice(0, 200) : '';
-      db.sql.run(`INSERT INTO leave_record (id, employee_id, date, type_code, start_time, end_time, hours, deduction, reason, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [l.id, l.empId, l.date, l.type, l.start, l.end, minutes / 60, deduction(minutes, salary, type.payRatio), reason, now, now]);
+      db.sql.run(`INSERT INTO leave_record (id, employee_id, date, type_code, start_time, end_time, hours, deduction, salary, reason, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [l.id, l.empId, l.date, l.type, l.start, l.end, minutes / 60, deduction(minutes, salary, type.payRatio), salary, reason, now, now]);
     }
     let overrides = 0;
     const years = Object.keys(d.calendars).map(Number).sort();

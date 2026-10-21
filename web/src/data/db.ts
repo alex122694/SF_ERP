@@ -146,7 +146,7 @@ export class Db {
     const leaves = this.rows('SELECT * FROM leave_record ORDER BY date, start_time, id').map((r): LeaveRecord => ({
       id: Number(r.id), employeeId: Number(r.employee_id), date: String(r.date), type: String(r.type_code),
       start: String(r.start_time), end: String(r.end_time), hours: Number(r.hours), deduction: Number(r.deduction),
-      reason: String(r.reason),
+      salary: Number(r.salary), reason: String(r.reason),
     }));
     const leaveTypes = this.rows('SELECT * FROM leave_type ORDER BY sort_order').map((r): LeaveType => ({
       code: String(r.code), name: String(r.name), payRatio: Number(r.pay_ratio), unitMinutes: Number(r.unit_minutes),
@@ -190,11 +190,12 @@ export class Db {
     return id;
   }
 
-  /** 回傳一併刪除的紀錄筆數 */
-  deleteEmployee(id: number): number {
-    const n = Number(this.rows('SELECT count(*) AS n FROM leave_record WHERE employee_id = ?', [id])[0].n);
+  /** 只能刪除沒有任何紀錄的員工（例如建錯的資料）；有出缺勤或特休處理紀錄的員工以離職日處理，保留歷史與金額 */
+  deleteEmployee(id: number) {
+    const n = Number(this.rows(`SELECT (SELECT count(*) FROM leave_record WHERE employee_id = ?)
+      + (SELECT count(*) FROM annual_settlement WHERE employee_id = ?) AS n`, [id, id])[0].n);
+    if (n) throw new UserError(msg('這位員工已有紀錄，不能刪除；請在「編輯資料」填寫離職日'));
     this.run('DELETE FROM employee WHERE id = ?', [id]);
-    return n;
   }
 
   // ---------- 出缺勤紀錄 ----------
@@ -208,12 +209,12 @@ export class Db {
     const reason = input.reason.trim();
     const now = localStamp();
     if (!existing) {
-      this.run(`INSERT INTO leave_record (employee_id, date, type_code, start_time, end_time, hours, deduction, reason, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [input.employeeId, input.date, input.type, input.start, input.end, r.hours, r.deduction, reason, now, now]);
+      this.run(`INSERT INTO leave_record (employee_id, date, type_code, start_time, end_time, hours, deduction, salary, reason, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [input.employeeId, input.date, input.type, input.start, input.end, r.hours, r.deduction, r.salary, reason, now, now]);
       return this.lastId();
     }
-    this.run(`UPDATE leave_record SET employee_id = ?, date = ?, type_code = ?, start_time = ?, end_time = ?, hours = ?, deduction = ?, reason = ?, updated_at = ?
-      WHERE id = ?`, [input.employeeId, input.date, input.type, input.start, input.end, r.hours, r.deduction, reason, now, existing.id]);
+    this.run(`UPDATE leave_record SET employee_id = ?, date = ?, type_code = ?, start_time = ?, end_time = ?, hours = ?, deduction = ?, salary = ?, reason = ?, updated_at = ?
+      WHERE id = ?`, [input.employeeId, input.date, input.type, input.start, input.end, r.hours, r.deduction, r.salary, reason, now, existing.id]);
     return existing.id;
   }
 

@@ -213,7 +213,7 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
         <aside className="card" aria-label={t('即時試算')} style={{ flex: '1 1 260px', minWidth: 0, padding: 22, display: 'flex', flexDirection: 'column', gap: 4, background: variant === 'dialog' ? 'var(--raised)' : undefined }}>
           <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t('即時試算')}</h2>
           <div className="kvrow"><span className="muted">{t('時數')}</span><b className="num">{type ? amountText : '—'}</b></div>
-          <div className="kvrow"><span className="muted">{t('時薪（本薪 ÷ 30 ÷ 8）')}</span><b className="num">{emp ? `NT$ ${hourlyRate(emp.salary).toFixed(1)}` : '—'}</b></div>
+          <div className="kvrow"><span className="muted">{t('時薪（本薪 ÷ 30 ÷ 8）')}</span><b className="num">{emp ? `NT$ ${hourlyRate(check.salary).toFixed(1)}` : '—'}</b></div>
           <div className="kvrow"><span className="muted">{t('給薪比例')}</span><b className="num">{type ? `${Math.round(type.payRatio * 100)}%` : '—'}</b></div>
           <div className="kvrow"><span className="muted">{t('扣除金額')}</span><b className="num" style={{ fontSize: 20, color: 'var(--accent)' }}>NT$ {money(check.deduction)}</b></div>
           {check.annual?.period && (

@@ -25,7 +25,7 @@ const emp = (over: Partial<Employee> = {}): Employee => ({
 });
 let nextId = 100;
 const rec = (date: string, type: string, start: string, end: string, employeeId = 1): LeaveRecord => ({
-  id: nextId++, employeeId, date, type, start, end, hours: (type === 'annual' ? annualMinutes(start, end) : leaveMinutes(start, end)) / 60, deduction: 0, reason: '',
+  id: nextId++, employeeId, date, type, start, end, hours: (type === 'annual' ? annualMinutes(start, end) : leaveMinutes(start, end)) / 60, deduction: 0, salary: 36000, reason: '',
 });
 const ctx = (over: Partial<LeaveContext> = {}): LeaveContext => ({
   employees: [emp(), emp({ id: 2, name: '林志明', gender: 'M', salary: 42000 })],

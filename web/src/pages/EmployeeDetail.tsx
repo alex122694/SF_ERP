@@ -45,10 +45,20 @@ export function EmployeeDetailPage() {
   }
   periods.reverse();
 
+  // 有紀錄的員工不刪除，改填離職日：離職後不會出現在登記名單，歷史紀錄與金額都保留
+  const hasHistory = mine.length > 0 || st.settlements.some((s) => s.employeeId === emp.id);
   const del = async () => {
-    const n = mine.length;
-    const ok = await confirm({ title: t('刪除 {0}？', [emp.name]), body: t('會一併刪除 {0} 筆出缺勤紀錄與特休處理紀錄，無法復原。', [n]), ok: t('刪除員工'), danger: true });
-    if (ok && (await run(() => src.deleteEmployee(emp.id), t('已刪除 {0}', [emp.name]))) != null) go('#/employees');
+    if (hasHistory) {
+      const ok = await confirm({
+        title: t('{0} 已有紀錄，不能刪除', [emp.name]),
+        body: t('有出缺勤或特休處理紀錄的員工請填寫離職日。離職後不會出現在登記名單，歷史紀錄與金額都會保留。'),
+        ok: t('填寫離職日'),
+      });
+      if (ok) setEditing(true);
+      return;
+    }
+    const ok = await confirm({ title: t('刪除 {0}？', [emp.name]), body: t('這位員工沒有任何紀錄，刪除後無法復原。'), ok: t('刪除員工'), danger: true });
+    if (ok && (await run(() => src.deleteEmployee(emp.id).then(() => true), t('已刪除 {0}', [emp.name])))) go('#/employees');
   };
 
   return (
