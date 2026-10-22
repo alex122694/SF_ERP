@@ -1,16 +1,20 @@
 {
   "_說明": "規則測試案例：輕量版（TypeScript）與標準版（Java）都必須通過同一份案例。日期一律 YYYY-MM-DD，期間的 end 不含當天。",
   "leaveMinutes": [
-    { "start": "09:30", "end": "18:30", "minutes": 480 },
+    { "start": "09:30", "end": "18:30", "minutes": 450 },
     { "start": "09:30", "end": "12:00", "minutes": 150 },
-    { "start": "13:30", "end": "18:30", "minutes": 330 },
-    { "start": "13:30", "end": "14:00", "minutes": 60 },
-    { "start": "14:00", "end": "18:30", "minutes": 270 },
-    { "start": "11:00", "end": "14:00", "minutes": 120 },
+    { "start": "13:30", "end": "18:30", "minutes": 300 },
+    { "start": "11:00", "end": "14:00", "minutes": 90 },
     { "start": "12:00", "end": "13:30", "minutes": 0 },
     { "start": "09:30", "end": "10:30", "minutes": 60 }
   ],
   "_deduction說明": "deduction 不取整；amount 是單筆四捨五入到整數元後的結果。deductionSum 是各筆不取整加總後才取整一次（與各筆先取整再加總不同）",
+  "chargedMinutes": [
+    { "start": "09:30", "end": "18:30", "minutes": 480 },
+    { "start": "09:30", "end": "12:00", "minutes": 150 },
+    { "start": "13:30", "end": "18:30", "minutes": 300 },
+    { "start": "09:30", "end": "18:00", "minutes": 420 }
+  ],
   "deduction": [
     { "minutes": 300, "salary": 36000, "payRatio": 0.5, "amount": 375 },
     { "minutes": 60, "salary": 36000, "payRatio": 0, "amount": 150 },

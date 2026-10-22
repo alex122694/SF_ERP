@@ -66,9 +66,7 @@ export interface Settlement {
 // ---------- 工時 ----------
 
 export const WORK_PERIODS: [string, string][] = [['09:30', '12:00'], ['13:30', '18:30']];
-/** 實際午休 12:00～13:30，只扣 1 小時，多出的 30 分鐘列為午休 bonus：13:30～14:00 這半小時以 1 小時計 */
-export const LUNCH_BONUS: [string, string] = ['13:30', '14:00'];
-export const HOURS_PER_DAY = 8; // 日數與時數換算基準；全天 8h = 上午 2.5h + 下午 5.5h（含午休 bonus）
+export const HOURS_PER_DAY = 8; // 日數與時數換算基準（實際工時 7.5h，請整天直接算 8h，見 chargedMinutes）
 export const DAYS_PER_MONTH = 30;
 
 export const SEGMENTS = [
@@ -86,8 +84,7 @@ export const annualMinutes = (start: string, end: string) =>
   (start === SEGMENTS[0].start && end === SEGMENTS[0].end ? 2 : 1) * HALF_DAY_MINUTES;
 
 export const LATE_START = '09:30';
-export const LATE_END_MAX = '18:30';
-
+export const LATE_END_MAX = '12:00'; // 12:00 以後到班視為整個上午缺勤，要登記請假
 export const isTimeStr = (t: unknown): t is string => typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 export const toMin = (t: string) => {
   const [h, m] = t.split(':').map(Number);
@@ -99,12 +96,20 @@ export const fromMin = (n: number) => `${String(Math.floor(n / 60)).padStart(2, 
 export const TIME_SLOTS: string[] = [];
 for (let n = toMin('09:30'); n <= toMin('18:30'); n += 30) TIME_SLOTS.push(fromMin(n));
 
-/** 請假時段與工作時段（扣午休）重疊的分鐘數；午休 bonus 時段重複計算一次，所以上午 150、下午 330、全天 480 */
+const WORK_MINUTES = WORK_PERIODS.reduce((sum, [s, e]) => sum + toMin(e) - toMin(s), 0); // 實際工時 450 分
+
+/** 請假時段與工作時段（扣午休）重疊的分鐘數 */
 export function leaveMinutes(start: string, end: string): number {
   const s = toMin(start), e = toMin(end);
   let min = 0;
-  for (const [ps, pe] of [...WORK_PERIODS, LUNCH_BONUS]) min += Math.max(0, Math.min(e, toMin(pe)) - Math.max(s, toMin(ps)));
+  for (const [ps, pe] of WORK_PERIODS) min += Math.max(0, Math.min(e, toMin(pe)) - Math.max(s, toMin(ps)));
   return min;
+}
+
+/** 請假計薪分鐘：涵蓋整個工作時段（全天）直接算 1 天 8h，其餘照實際重疊時數 */
+export function chargedMinutes(start: string, end: string): number {
+  const min = leaveMinutes(start, end);
+  return min === WORK_MINUTES ? HOURS_PER_DAY * 60 : min;
 }
 
 const pct = (ratio: number) => Math.round(ratio * 100);
@@ -145,7 +150,7 @@ export const LEAVE_TYPE_NOTES: Record<string, string> = {
   annual: '以半天為單位：上午、下午各算半天（4 h），全天算 1 天（8 h）；剩餘額度不足不能登記',
   absent: '沒有請假也沒有到班的缺勤；月曆上方有曠職快速導覽列，補請假時可快速找到並修改',
   menstrual: '限女性',
-  late: '09:30 起算，依實際到班時間計分鐘（午休不算），沒有上限',
+  late: '09:30 起算，依實際到班時間計分鐘，最晚到 12:00（12:00 以後請登記上午請假）',
 };
 
 export function unitText(t: LeaveType): Msg {
@@ -320,7 +325,7 @@ export interface Calendars {
 export function recordMinutes(type: string, start: string, end: string): number {
   if (type === 'late') return leaveMinutes(LATE_START, end);
   if (type === 'annual' && isSegment(start, end)) return annualMinutes(start, end);
-  return leaveMinutes(start, end);
+  return chargedMinutes(start, end);
 }
 
 export interface LeaveInput {
@@ -381,6 +386,8 @@ export function checkLeave(
   }
   if (minutes <= 0) return fail(msg('時數為 0，請調整起訖時間。'));
 
+  const dup = ctx.leaves.find((o) => o.employeeId === emp.id && o.date === input.date && o.id !== existingId && o.type === input.type);
+  if (dup) return fail(msg('{0} 當天已有{1}紀錄，同一天同一假別只能登記一筆', [emp.name, msg(t.name)]));
   const clash = ctx.leaves.find((o) => o.employeeId === emp.id && o.date === input.date && o.id !== existingId
     && toMin(input.start) < toMin(o.end) && toMin(o.start) < toMin(input.end));
   if (clash) {

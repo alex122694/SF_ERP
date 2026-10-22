@@ -60,8 +60,8 @@ export function SettingsPage() {
           <h2 style={{ marginBottom: 6 }}>{t('上班時間與扣款')}</h2>
           <div className="kvrow"><span className="muted">{t('上班')}</span><b className="num">{st.settings.work_start}～{st.settings.work_end}</b></div>
           <div className="kvrow"><span className="muted">{t('午休')}</span><b className="num">{st.settings.lunch_start}～{st.settings.lunch_end}</b></div>
-          <div className="kvrow"><span className="muted">{t('上午／下午／全天')}</span><b className="num">{t('2.5 h／5.5 h／8 h')}</b></div>
-          <span className="muted small" style={{ margin: '-2px 0 4px' }}>{t('實際午休 12:00～13:30，只扣 1 小時，多出的 30 分鐘列為午休 bonus，13:30～14:00 以 1 小時計。')}</span>
+          <div className="kvrow"><span className="muted">{t('上午／下午／全天')}</span><b className="num">{t('2.5 h／5 h／8 h')}</b></div>
+          <span className="muted small" style={{ margin: '-2px 0 4px' }}>{t('請整天（涵蓋整個工作時段）直接算 8 小時；上午、下午等其他時段依實際工時計。')}</span>
           <div className="kvrow"><span className="muted">{t('日數換算')}</span><b>{t('1 日 = {0} h', [st.settings.hours_per_day])}</b></div>
           <div className="kvrow"><span className="muted">{t('月結區間')}</span><b>{t('上月 23 日 ～ 本月 22 日')}</b></div>
           <div className="kvrow"><span className="muted">{t('時薪')}</span><b>{t('本薪 ÷ 30 ÷ 8')}</b></div>

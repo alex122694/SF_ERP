@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import cases from '../../shared/rules-cases.json';
 import {
   DEFAULT_LEAVE_TYPES, annualDaysForYears, annualMinutes, annualPeriod, annualStatus, buildSettlement, cashOut, checkLeave,
-  checkEmployee, deduction, leaveMinutes, roundYuan, seniorityText, sumDeduction, settlementMonthOf, settlementRange, settlementsDue,
+  checkEmployee, chargedMinutes, deduction, leaveMinutes, roundYuan, seniorityText, sumDeduction, settlementMonthOf, settlementRange, settlementsDue,
   type Employee, type LeaveCheck, type LeaveContext, type LeaveRecord, type Settlement,
 } from '../src/rules/rules';
 
 describe('shared/rules-cases.json', () => {
   it.each(cases.leaveMinutes)('leaveMinutes $start-$end', (c) => expect(leaveMinutes(c.start, c.end)).toBe(c.minutes));
+  it.each(cases.chargedMinutes)('chargedMinutes $start-$end', (c) => expect(chargedMinutes(c.start, c.end)).toBe(c.minutes));
   it.each(cases.deduction)('deduction $minutes min $salary $payRatio', (c) =>
     expect(roundYuan(deduction(c.minutes, c.salary, c.payRatio))).toBe(c.amount));
   it.each(cases.deductionSum)('deductionSum $items.length 筆', (c) =>
@@ -60,16 +61,26 @@ describe('月結區間（上月 23 日 ~ 本月 22 日）', () => {
 describe('checkLeave', () => {
   it('算出時數與扣款', () => {
     const r = checkLeave(input(), ctx());
-    expect(r).toMatchObject({ ok: true, hours: 5.5, minutes: 330 });
-    expect(r.deduction).toBeCloseTo(412.5, 6);
+    expect(r).toMatchObject({ ok: true, hours: 5, minutes: 300 });
+    expect(r.deduction).toBeCloseTo(375, 6);
   });
-  it('遲到依實際分鐘扣款，沒有上限；午休不算，最晚 18:30', () => {
+  it('遲到依實際分鐘扣款，最晚到 12:00', () => {
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '09:42', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 12, deduction: 30 });
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '10:01', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 31 });
-    expect(checkLeave(input({ type: 'late', start: '09:30', end: '14:00', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 150 + 30 + 30 });
-    expect(checkLeave(input({ type: 'late', start: '09:30', end: '18:30', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 480 });
-    expect(checkLeave(input({ type: 'late', start: '09:30', end: '18:31', employeeId: 1 }), ctx()).ok).toBe(false);
+    expect(checkLeave(input({ type: 'late', start: '09:30', end: '12:00', employeeId: 1 }), ctx())).toMatchObject({ ok: true, minutes: 150 });
+    expect(checkLeave(input({ type: 'late', start: '09:30', end: '12:01', employeeId: 1 }), ctx()).ok).toBe(false);
+    expect(checkLeave(input({ type: 'late', start: '09:30', end: '14:00', employeeId: 1 }), ctx()).ok).toBe(false);
     expect(checkLeave(input({ type: 'late', start: '09:30', end: '09:30', employeeId: 1 }), ctx()).ok).toBe(false);
+  });
+  it('請全天直接算 1 天 8h；非全天照實際時數', () => {
+    expect(checkLeave(input({ start: '09:30', end: '18:30' }), ctx())).toMatchObject({ ok: true, hours: 8, minutes: 480 });
+    expect(checkLeave(input({ start: '09:30', end: '12:00' }), ctx())).toMatchObject({ ok: true, hours: 2.5 });
+    expect(checkLeave(input({ start: '09:30', end: '18:00' }), ctx())).toMatchObject({ ok: true, hours: 7 });
+  });
+  it('同人同天同假別只能一筆，不同假別可以', () => {
+    const c = ctx({ leaves: [rec('2026-10-19', 'personal', '09:30', '12:00')] });
+    expect(errOf(checkLeave(input({ type: 'personal', start: '13:30', end: '18:30' }), c))).toContain('只能登記一筆');
+    expect(checkLeave(input({ type: 'sick', start: '13:30', end: '18:30' }), c).ok).toBe(true);
   });
   it('放假日、未匯入年度不能登記', () => {
     expect(errOf(checkLeave(input({ date: '2026-10-09' }), ctx()))).toContain('放假日');

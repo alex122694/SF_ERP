@@ -76,9 +76,9 @@ describe('Db', () => {
   it('登記、編輯、刪除紀錄，扣款於存檔時算好', async () => {
     const { db, id } = await seeded();
     const lid = db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'sick', start: '13:30', end: '18:30', reason: ' 看診 ' });
-    expect(db.state().leaves[0]).toMatchObject({ id: lid, hours: 5.5, deduction: 412.5, reason: '看診' });
+    expect(db.state().leaves[0]).toMatchObject({ id: lid, hours: 5, deduction: 375, reason: '看診' });
     db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'personal', start: '13:30', end: '14:30', reason: '' }, lid);
-    expect(db.state().leaves[0]).toMatchObject({ type: 'personal', hours: 1.5, deduction: 225 });
+    expect(db.state().leaves[0]).toMatchObject({ type: 'personal', hours: 1, deduction: 150 });
     expect(() => db.saveLeave({ employeeId: id, date: '2026-10-18', type: 'sick', start: '09:30', end: '12:00', reason: '' })).toThrow(UserError);
     db.deleteLeave(lid);
     expect(db.state().leaves).toHaveLength(0);
@@ -90,7 +90,7 @@ describe('Db', () => {
     expect(exp.skipped).toEqual(['2026-10-09', '2026-10-10', '2026-10-11']);
     expect(exp.days.map((d) => `${d.date} ${d.start}-${d.end}`)).toEqual(['2026-10-08 13:30-18:30', '2026-10-12 09:30-18:30', '2026-10-13 09:30-12:00']);
     expect(db.saveLeaves(exp.days)).toHaveLength(3);
-    expect(db.state().leaves.map((l) => l.hours)).toEqual([5.5, 8, 2.5]);
+    expect(db.state().leaves.map((l) => l.hours)).toEqual([5, 8, 2.5]);
   });
   it('多日請假有一天不行就整批退回，並指出是哪一天', async () => {
     const { db, id } = await seeded();
@@ -251,7 +251,7 @@ describe('舊版 db.json 匯入', () => {
     const db = Db.open(SQL);
     const bad = { ...legacy, leaves: [{ ...legacy.leaves[0], hours: 99, amount: 99999 }, { id: 3, empId: 1, date: '2026-10-20', type: 'annual', start: '09:30', end: '12:00', hours: 2.5, amount: 0 }] };
     importLegacyJson(db, JSON.stringify(bad));
-    expect(db.state().leaves.map((l) => [l.hours, l.deduction])).toEqual([[5.5, 412.5], [4, 0]]);
+    expect(db.state().leaves.map((l) => [l.hours, l.deduction])).toEqual([[5, 375], [4, 0]]);
   });
   it('格式錯誤的紀錄整批取消', () => {
     const cases = [
