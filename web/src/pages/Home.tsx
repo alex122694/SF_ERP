@@ -1,11 +1,12 @@
 // 首頁與提醒（規格第 5 節）
+import { useEffect, useState } from 'react';
 import { useApp } from '../ui/app-context';
 import { CalendarUpload } from '../ui/CalendarUpload';
 import { Icon } from '../ui/icons';
 import { Annual, LeaveAmount, useAnnualUnit } from '../ui/annual-unit';
 import { annualText, fmtHours, longDate, ntd, typeColor, typeName, weekdayName } from '../ui/format';
 import { activeEmployees, dueList, empOf, missingCalendarYears, typeOf } from '../ui/derive';
-import { addDays, cashOut, daysBetween, totalDeduction, weekday, type SettlementAction } from '../rules/rules';
+import { addDays, cashOut, daysBetween, toMin, totalDeduction, weekday, type SettlementAction } from '../rules/rules';
 import type { SettlementDue } from '../rules/rules';
 import { t, tr } from '../i18n';
 
@@ -21,7 +22,16 @@ export function HomePage() {
   const monday = addDays(today, -((weekday(today) + 6) % 7));
   const week = Array.from({ length: 5 }, (_, i) => addDays(monday, i));
   const peopleOn = (d: string) => new Set(st.leaves.filter((l) => l.date === d).map((l) => l.employeeId)).size;
-  const absentToday = new Set(todays.map((l) => l.employeeId)).size;
+  const absentToday = new Set(todays.filter((l) => l.type !== 'late').map((l) => l.employeeId)).size;
+  // 不在座位＝現在時間落在請假時段內；遲到人還是有到，不算
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const clock = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const away = todays.filter((l) => l.type !== 'late' && toMin(l.start) <= nowMin && nowMin < toMin(l.end));
 
   return (
     <div className="page" style={{ gap: 24, maxWidth: 1120 }}>
@@ -65,11 +75,11 @@ export function HomePage() {
 
         <section className="card pad stack" style={{ flex: '2 1 340px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 className="spacer">{t('今天不在座位')}</h2>
+            <h2 className="spacer">{t('現在不在座位')} <span className="muted num" style={{ fontSize: 14, fontWeight: 700 }}>{clock}</span></h2>
             <a href={`#/attendance?ym=${month}&sel=${today}`} style={{ fontSize: 13, fontWeight: 700 }}>{t('看月曆')}</a>
           </div>
-          {todays.length === 0 && <span className="muted">{t('今天沒有請假紀錄。')}</span>}
-          {todays.map((l) => {
+          {away.length === 0 && <span className="muted">{t('現在沒有人不在座位。')}</span>}
+          {away.map((l) => {
             const e = empOf(st, l.employeeId);
             const tp = typeOf(st, l.type);
             return (
