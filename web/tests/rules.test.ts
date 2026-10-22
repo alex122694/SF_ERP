@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import cases from '../../shared/rules-cases.json';
 import {
   DEFAULT_LEAVE_TYPES, annualDaysForYears, annualMinutes, annualPeriod, annualStatus, buildSettlement, cashOut, checkLeave,
-  checkEmployee, chargedMinutes, deduction, leaveMinutes, roundYuan, seniorityText, sumDeduction, settlementMonthOf, settlementRange, settlementsDue,
+  checkEmployee, chargedMinutes, deduction, leaveMinutes, roundYuan, seniorityText, sumDeduction, totalDeduction, settlementMonthOf, settlementRange, settlementsDue,
   type Employee, type LeaveCheck, type LeaveContext, type LeaveRecord, type Settlement,
 } from '../src/rules/rules';
 
@@ -13,6 +13,8 @@ describe('shared/rules-cases.json', () => {
     expect(roundYuan(deduction(c.minutes, c.salary, c.payRatio))).toBe(c.amount));
   it.each(cases.deductionSum)('deductionSum $items.length 筆', (c) =>
     expect(sumDeduction(c.items.map((i) => deduction(i.minutes, i.salary, i.payRatio)))).toBe(c.amount));
+  it.each(cases.totalDeduction)('totalDeduction $items.length 筆 → $amount', (c) =>
+    expect(totalDeduction(c.items.map((i) => ({ employeeId: i.employeeId, type: i.type, deduction: deduction(i.minutes, i.salary, i.payRatio) })))).toBe(c.amount));
   it.each(cases.cashOut)('cashOut $hours h $salary', (c) => expect(cashOut(c.hours, c.salary)).toBe(c.amount));
   it.each(cases.annualDaysForYears)('annualDays $years', (c) => expect(annualDaysForYears(c.years)).toBe(c.days));
   it.each(cases.annualPeriod)('annualPeriod $base @ $date', (c) => {

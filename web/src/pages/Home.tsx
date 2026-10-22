@@ -5,7 +5,7 @@ import { Icon } from '../ui/icons';
 import { Annual, LeaveAmount, useAnnualUnit } from '../ui/annual-unit';
 import { annualText, fmtHours, longDate, ntd, typeColor, typeName, weekdayName } from '../ui/format';
 import { activeEmployees, dueList, empOf, missingCalendarYears, typeOf } from '../ui/derive';
-import { addDays, cashOut, daysBetween, sumDeduction, weekday, type SettlementAction } from '../rules/rules';
+import { addDays, cashOut, daysBetween, totalDeduction, weekday, type SettlementAction } from '../rules/rules';
 import type { SettlementDue } from '../rules/rules';
 import { t, tr } from '../i18n';
 
@@ -36,7 +36,7 @@ export function HomePage() {
       <div className="grid-cards">
         <div className="card stat"><span className="label">{t('在職員工')}</span><b className="value">{activeEmployees(st, today).length}<span className="unit"> {t('人')}</span></b></div>
         <div className="card stat"><span className="label">{t('本月請假時數')}</span><b className="value">{fmtHours(monthLeaves.filter((l) => l.type !== 'late').reduce((s, l) => s + l.hours, 0))}<span className="unit"> h</span></b></div>
-        <div className="card stat"><span className="label">{t('本月扣除金額')}</span><b className="value"><span className="unit">NT$ </span>{sumDeduction(monthLeaves.map((l) => l.deduction)).toLocaleString('en-US')}</b></div>
+        <div className="card stat"><span className="label">{t('本月扣除金額')}</span><b className="value"><span className="unit">NT$ </span>{totalDeduction(monthLeaves).toLocaleString('en-US')}</b></div>
         <div className="card stat" style={pending ? { borderColor: 'var(--warn)' } : undefined}>
           <span className="label" style={pending ? { color: 'var(--warn)' } : undefined}>{t('待處理')}</span>
           <b className="value">{pending}<span className="unit"> {t('件')}</span></b>

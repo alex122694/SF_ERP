@@ -8,7 +8,7 @@ import { SETTLE_LABEL as ACTION_LABEL, annualNow, settlementFor, typeOf } from '
 import { EmployeeDialog } from './Employees';
 import { msgText, t, tr } from '../i18n';
 import {
-  addMonths, annualPeriod, annualStatus, asOfDate, daysBetween, daysInMonth, isEmployedOn, seniorityText, sumDeduction, ymd,
+  addMonths, annualPeriod, annualStatus, asOfDate, daysBetween, daysInMonth, isEmployedOn, seniorityText, sumDeduction, totalDeduction, ymd,
   type AnnualPeriod,
 } from '../rules/rules';
 
@@ -30,7 +30,7 @@ export function EmployeeDetailPage() {
   const yearRecs = mine.filter((l) => l.date.startsWith(String(year)));
   const sumBy = (code: string) => yearRecs.filter((l) => l.type === code).reduce((s, l) => s + l.hours, 0);
   const hoursTotal = yearRecs.filter((l) => l.type !== 'late').reduce((s, l) => s + l.hours, 0);
-  const dedTotal = sumDeduction(yearRecs.map((l) => l.deduction));
+  const dedTotal = totalDeduction(yearRecs);
   const lates = yearRecs.filter((l) => l.type === 'late');
   const dedParts = st.leaveTypes
     .map((tp) => ({ tp, v: sumDeduction(yearRecs.filter((l) => l.type === tp.code).map((l) => l.deduction)) }))

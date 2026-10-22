@@ -116,7 +116,7 @@ const pct = (ratio: number) => Math.round(ratio * 100);
 
 /**
  * 一筆紀錄的扣除金額 = 時數 × (薪資 ÷ 30 ÷ 8) × (1 − 給薪比例)，不取整（保留小數，存檔也存這個值）；以整數分鐘計算避免浮點誤差。
- * 金額一律逐筆加總後才取整一次（sumDeduction），畫面上單筆顯示用 roundYuan
+ * 同一位員工、同一假別的各筆先加總（不取整）再取整一次（sumDeduction）；再把各假別取整後的金額相加成總額（totalDeduction）；畫面上單筆顯示用 roundYuan
  */
 export function deduction(minutes: number, salary: number, payRatio: number): number {
   // 整天（8h）直接用日薪（月薪 ÷ 30），不經時薪
@@ -129,6 +129,13 @@ export const roundYuan = (n: number) => Math.round(Number(n.toFixed(6)));
 
 /** 逐筆加總（不取整）後一次取整 */
 export const sumDeduction = (amounts: number[]) => roundYuan(amounts.reduce((s, n) => s + n, 0));
+
+/** 總扣款：各員工、各假別分別加總取整後，再把取整完的假別金額相加 */
+export function totalDeduction(recs: Pick<LeaveRecord, 'employeeId' | 'type' | 'deduction'>[]): number {
+  const groups = new Map<string, number[]>();
+  for (const l of recs) groups.set(`${l.employeeId}|${l.type}`, [...(groups.get(`${l.employeeId}|${l.type}`) ?? []), l.deduction]);
+  return [...groups.values()].reduce((s, list) => s + sumDeduction(list), 0);
+}
 
 /** 時數換錢 = 時數 × 時薪，四捨五入到整數元 */
 export const cashOut = (hours: number, salary: number) =>

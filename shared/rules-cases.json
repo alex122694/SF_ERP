@@ -31,6 +31,18 @@
     { "items": [{ "minutes": 150, "salary": 33000, "payRatio": 0.5 }, { "minutes": 150, "salary": 33000, "payRatio": 0.5 }], "amount": 344 },
     { "items": [], "amount": 0 }
   ],
+  "totalDeduction": [
+    { "_說明": "各假別先加總取整，再相加：遲到 4.44→4、病假 533.33→533、事假 133.33+1066.67=1200", "items": [
+      { "employeeId": 1, "type": "late", "minutes": 2, "salary": 32000, "payRatio": 0 },
+      { "employeeId": 1, "type": "sick", "minutes": 480, "salary": 32000, "payRatio": 0.5 },
+      { "employeeId": 1, "type": "personal", "minutes": 60, "salary": 32000, "payRatio": 0 },
+      { "employeeId": 1, "type": "personal", "minutes": 480, "salary": 32000, "payRatio": 0 }], "amount": 1737 },
+    { "_說明": "同假別三筆 14.58 → 加總 43.75 → 44（不是 15×3）；另一位員工各自計算", "items": [
+      { "employeeId": 1, "type": "late", "minutes": 5, "salary": 42000, "payRatio": 0 },
+      { "employeeId": 1, "type": "late", "minutes": 5, "salary": 42000, "payRatio": 0 },
+      { "employeeId": 1, "type": "late", "minutes": 5, "salary": 42000, "payRatio": 0 },
+      { "employeeId": 2, "type": "late", "minutes": 5, "salary": 42000, "payRatio": 0 }], "amount": 59 }
+  ],
   "cashOut": [
     { "hours": 22.5, "salary": 36000, "amount": 3375 },
     { "hours": 5, "salary": 42000, "amount": 875 },

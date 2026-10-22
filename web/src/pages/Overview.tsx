@@ -6,7 +6,7 @@ import { Icon } from '../ui/icons';
 import { Annual, LeaveAmount } from '../ui/annual-unit';
 import { amountText, downloadBlob, fmtHours, mdText, money, ntd, typeColor, typeName } from '../ui/format';
 import { typeOf } from '../ui/derive';
-import { isDateStr, settlementMonthOf, settlementRange, sumDeduction, type Employee, type LeaveRecord, type LeaveType } from '../rules/rules';
+import { isDateStr, settlementMonthOf, settlementRange, sumDeduction, totalDeduction, type Employee, type LeaveRecord, type LeaveType } from '../rules/rules';
 import { buildXlsx, XLSX_TYPE } from '../data/xlsxWrite';
 import { t } from '../i18n';
 
@@ -48,10 +48,10 @@ export function OverviewPage() {
         .map((tp) => ({ tp, list: mine.filter((l) => l.type === tp.code) }))
         .filter((x) => x.list.length)
         .map(({ tp, list }) => ({ tp, hours: list.reduce((s, l) => s + l.hours, 0), ded: sumDeduction(list.map((l) => l.deduction)) }));
-      return { e, mine, parts, ded: sumDeduction(mine.map((l) => l.deduction)) };
+      return { e, mine, parts, ded: totalDeduction(mine) };
     });
   const totals = types.map((tp) => sumOf(recs, tp.code));
-  const dedTotal = sumDeduction(rows.flatMap((r) => r.mine.map((l) => l.deduction)));
+  const dedTotal = totalDeduction(rows.flatMap((r) => r.mine));
   const genderText = (g: string) => (g === 'F' ? t('女') : t('男'));
   const partHours = (tp: LeaveType, hours: number) => amountText({ type: tp.code, hours });
 
@@ -61,7 +61,7 @@ export function OverviewPage() {
     (r.parts.length === 1 ? f(r.parts[0]) : r.parts.map(f).join('\n'));
   const exportXlsx = (sel: typeof rows) => {
     const sheet = t('請假總覽');
-    const selDed = sumDeduction(sel.flatMap((r) => r.mine.map((l) => l.deduction)));
+    const selDed = totalDeduction(sel.flatMap((r) => r.mine));
     const rowsOut = [
       [t('姓名'), t('性別'), t('本薪'), t('假別'), t('時數'), t('扣款金額'), t('總扣款金額')],
       ...sel.map((r) => [
