@@ -7,6 +7,7 @@ rem   1) public repository -> plain download, no git and no token needed
 rem   2) git installed       -> sparse clone (uses your saved git credentials)
 rem   3) otherwise           -> GitHub API download with a read-only token, taken from the GITHUB_TOKEN
 rem                             environment variable or from sf_erp_token.txt next to this file
+rem Creates a desktop shortcut "SF ERP.html" and closes the window when finished (stays open only on errors).
 rem Never touches SF ERP\data\ (database and backups).
 setlocal EnableExtensions
 chcp 65001 >nul
@@ -48,9 +49,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -LiteralP
 
 if not exist "%APP%\data" mkdir "%APP%\data"
 rd /s /q "%WORK%" 2>nul
+
+rem Desktop shortcut "SF ERP.html" -> index.html (recreated on every run; Windows hides the .lnk extension)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$d=[Environment]::GetFolderPath('Desktop'); $l=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d 'SF ERP.html.lnk')); $l.TargetPath=Join-Path $env:APP 'index.html'; $l.WorkingDirectory=$env:APP; $l.Save()" || echo Could not create the desktop shortcut.
+
 echo.
-echo Done. Open "%APP%\index.html" with Edge or Chrome. Your data folder was left untouched.
-pause
+echo Done: "%APP%\index.html" updated, desktop shortcut "SF ERP.html" created. Your data folder was left untouched.
+echo Open it with Edge or Chrome. This window closes automatically.
+ping -n 4 127.0.0.1 >nul
 exit /b 0
 
 :viaraw
