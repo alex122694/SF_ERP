@@ -446,6 +446,7 @@ export const M: Record<string, [string, string, string]> = {
   '區間：{0} ～ {1}': ["Range: {0} – {1}", "期間：{0} ～ {1}", "구간: {0} ~ {1}"],
   '起日不能晚於迄日。': ["The start date cannot be later than the end date.", "開始日は終了日より後にできません。", "시작일은 종료일보다 늦을 수 없습니다."],
   '扣款金額': ["Deduction", "控除額", "공제액"],
+  '實領': ["Net pay", "手取り", "실수령"],
   '總扣款金額': ["Total deduction", "控除額合計", "총 공제액"],
   '合計 {0} 人': ["Total: {0} {0|person|people}", "合計 {0} 人", "합계 {0}명"],
   '年度': ["Year", "年度", "연도"],

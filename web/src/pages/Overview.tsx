@@ -63,14 +63,14 @@ export function OverviewPage() {
     const sheet = t('請假總覽');
     const selDed = totalDeduction(sel.flatMap((r) => r.mine));
     const rowsOut = [
-      [t('姓名'), t('性別'), t('本薪'), t('假別'), t('時數'), t('扣款金額'), t('總扣款金額')],
+      [t('姓名'), t('性別'), t('本薪'), t('假別'), t('時數'), t('扣款金額'), t('總扣款金額'), t('實領')],
       ...sel.map((r) => [
         r.e.name, genderText(r.e.gender), r.e.salary,
-        lines(r, (p) => typeName(p.tp)), lines(r, (p) => partHours(p.tp, p.hours)), lines(r, (p) => p.ded), r.ded,
+        lines(r, (p) => typeName(p.tp)), lines(r, (p) => partHours(p.tp, p.hours)), lines(r, (p) => p.ded), r.ded, r.e.salary - r.ded,
       ]),
-      [t('合計 {0} 人', [sel.length]), '', '', '', '', selDed, selDed],
+      [t('合計 {0} 人', [sel.length]), '', '', '', '', selDed, selDed, sel.reduce((n, x) => n + x.e.salary - x.ded, 0)],
     ];
-    const bytes = buildXlsx(sheet, { rows: rowsOut, widths: [14, 8, 12, 14, 12, 12, 14], boldRows: [0, rowsOut.length - 1] });
+    const bytes = buildXlsx(sheet, { rows: rowsOut, widths: [14, 8, 12, 14, 12, 12, 14, 12], boldRows: [0, rowsOut.length - 1] });
     downloadBlob(`${sheet}_${from}~${to}.xlsx`, new Blob([bytes], { type: XLSX_TYPE }));
   };
   // 請假明細總覽：一筆紀錄一列（姓名、部門、日期、假別、時間、時數），依員工、日期排序
