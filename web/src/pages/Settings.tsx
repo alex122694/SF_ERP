@@ -145,6 +145,12 @@ export function SettingsPage() {
           <section className="card pad stack" style={{ gap: 4 }}>
             <h2 style={{ marginBottom: 8 }}>{t('資料檔與備份')}</h2>
             <div className="kvrow"><span className="muted">{t('資料夾')}</span><b style={{ wordBreak: 'break-all' }}>{t(lite.store.label)}</b></div>
+            <div className="kvrow"><span className="muted">{t('儲存狀態')}</span><b className="num" style={{ color: lite.status?.error ? 'var(--danger)' : undefined }}>{
+              lite.readOnly ? t('唯讀（另一個分頁開著）')
+                : lite.status?.error ? t('上次存檔失敗')
+                : lite.status?.saving ? t('儲存中…')
+                : lite.status?.savedAt ? t('已自動儲存 · {0}', [`${String(lite.status.savedAt.getHours()).padStart(2, '0')}:${String(lite.status.savedAt.getMinutes()).padStart(2, '0')}`]) : '—'
+            }</b></div>
             <div className="kvrow"><span className="muted">{t('資料檔')}</span><b className="num">sf_erp.sqlite · {info ? `${(info.size / 1024).toFixed(0)} KB` : '—'}</b></div>
             <div className="kvrow"><span className="muted">{t('最近備份')}</span><b className="num">{info?.lastBackup ?? t('尚未備份')}{info?.backups ? t('（共 {0} 份）', [info.backups]) : ''}</b></div>
             <div className="kvrow"><span className="muted">{t('保留份數')}</span><b className="num">{t('{0} 份', [st.settings.backup_keep])}</b></div>

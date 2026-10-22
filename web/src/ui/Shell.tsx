@@ -1,8 +1,9 @@
 // 側邊選單＋內容區
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useApp } from './app-context';
 import { Backdrop, Icon, type IconName } from './icons';
 import { LangSwitch } from './LangSwitch';
+import { longDate } from './format';
 import { t } from '../i18n';
 
 const NAV: { page: string; label: string; icon: IconName }[] = [
@@ -17,10 +18,27 @@ const NAV: { page: string; label: string; icon: IconName }[] = [
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+/** 目前日期、時間（HH:MM）與今天是上班日或放假日 */
+function Clock() {
+  const { cal } = useApp();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const holiday = cal.isHoliday(date);
+  return (
+    <div className="stack" style={{ gap: 2, padding: '0 12px 12px' }}>
+      <b className="num" style={{ fontSize: 26, lineHeight: 1.2 }}>{pad(now.getHours())}:{pad(now.getMinutes())}</b>
+      <span className="muted small">{longDate(date)}</span>
+      <span className="muted small" style={{ fontWeight: 700 }}>{holiday === undefined ? t('行事曆未匯入') : holiday ? t('放假日') : t('上班日')}</span>
+    </div>
+  );
+}
+
 export function Shell({ children, theme, onTheme }: { children: ReactNode; theme: 'dark' | 'light'; onTheme: () => void }) {
   const { route, lite } = useApp();
-  const status = lite?.status;
-  const saved = status?.savedAt;
   return (
     <div className="app">
       <Backdrop />
@@ -32,6 +50,7 @@ export function Shell({ children, theme, onTheme }: { children: ReactNode; theme
             <span className="muted small">{lite ? 'lite' : t('標準版')}</span>
           </div>
         </div>
+        <Clock />
         <nav aria-label={t('主選單')} className="nav-list">
           {NAV.map((n) => {
             const on = route.page === n.page;
@@ -43,20 +62,6 @@ export function Shell({ children, theme, onTheme }: { children: ReactNode; theme
           })}
         </nav>
         <div className="side-foot">
-          {lite && (
-            <div className="file-chip" title={t(lite.store.label)}>
-              <Icon name="db" style={{ color: status?.error ? 'var(--danger)' : 'var(--accent)' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.35, minWidth: 0 }}>
-                <b style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis' }}>{t(lite.store.label)}</b>
-                <span className="muted small">
-                  {lite.readOnly ? t('唯讀（另一個分頁開著）')
-                    : status?.error ? t('上次存檔失敗')
-                    : status?.saving ? t('儲存中…')
-                    : saved ? t('已自動儲存 · {0}', [`${pad(saved.getHours())}:${pad(saved.getMinutes())}`]) : 'sf_erp.sqlite'}
-                </span>
-              </div>
-            </div>
-          )}
           <button type="button" className="btn sm" style={{ justifyContent: 'flex-start' }} onClick={onTheme}>
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />{theme === 'dark' ? t('切換淺色') : t('切換深色')}
           </button>

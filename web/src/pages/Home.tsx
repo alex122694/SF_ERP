@@ -4,15 +4,14 @@ import { useApp } from '../ui/app-context';
 import { CalendarUpload } from '../ui/CalendarUpload';
 import { Icon } from '../ui/icons';
 import { Annual, LeaveAmount, useAnnualUnit } from '../ui/annual-unit';
-import { annualText, fmtHours, longDate, ntd, typeColor, typeName, weekdayName } from '../ui/format';
+import { annualText, fmtHours, ntd, typeColor, typeName, weekdayName } from '../ui/format';
 import { activeEmployees, dueList, empOf, missingCalendarYears, typeOf } from '../ui/derive';
 import { addDays, cashOut, daysBetween, toMin, totalDeduction, weekday, type SettlementAction } from '../rules/rules';
 import type { SettlementDue } from '../rules/rules';
 import { t, tr } from '../i18n';
 
 export function HomePage() {
-  const { st, cal, today } = useApp();
-  const holiday = cal.isHoliday(today);
+  const { st, today } = useApp();
   const month = today.slice(0, 7);
   const monthLeaves = st.leaves.filter((l) => l.date.startsWith(month));
   const todays = st.leaves.filter((l) => l.date === today);
@@ -29,7 +28,6 @@ export function HomePage() {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-  const clock = [now.getHours(), now.getMinutes()].map((n) => String(n).padStart(2, '0')).join(':');
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const away = todays.filter((l) => l.type !== 'late' && toMin(l.start) <= nowMin && nowMin < toMin(l.end));
 
@@ -37,7 +35,6 @@ export function HomePage() {
     <div className="page" style={{ gap: 24, maxWidth: 1120 }}>
       <div className="page-head" style={{ alignItems: 'flex-end' }}>
         <div className="title" style={{ flex: '1 1 360px', gap: 6 }}>
-          <span className="muted" style={{ fontWeight: 700 }}>{longDate(today)} · {holiday === undefined ? t('行事曆未匯入') : holiday ? t('放假日') : t('上班日')}</span>
           <h1 style={{ fontSize: 34 }}>{absentToday ? t('今天有 {0} 人請假', [absentToday]) : t('今天沒有人請假')}</h1>
         </div>
         <a className="btn primary" href="#/quick"><Icon name="plus" size={18} stroke={2} />{t('快速登記')}</a>
@@ -75,7 +72,7 @@ export function HomePage() {
 
         <section className="card pad stack" style={{ flex: '2 1 340px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 className="spacer">{t('現在不在座位')} <span className="muted num" style={{ fontSize: 14, fontWeight: 700 }}>{clock}</span></h2>
+            <h2 className="spacer">{t('現在不在座位')}</h2>
             <a href={`#/attendance?ym=${month}&sel=${today}`} style={{ fontSize: 13, fontWeight: 700 }}>{t('看月曆')}</a>
           </div>
           {away.length === 0 && <span className="muted">{t('現在沒有人不在座位。')}</span>}
