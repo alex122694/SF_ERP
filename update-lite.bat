@@ -2,10 +2,11 @@
 rem SF ERP lite updater: fetch release/SF ERP-lite.zip from GitHub and extract it to a folder.
 rem Usage: update-lite.bat "D:\"        (the zip has a top-level "SF ERP" folder, so the result is D:\SF ERP\)
 rem        update-lite.bat             (asks for the folder)
-rem Download method:
-rem   1) git installed  -> sparse clone (uses your saved git credentials)
-rem   2) no git         -> GitHub API download with a read-only token, taken from the GITHUB_TOKEN
-rem                        environment variable or from sf_erp_token.txt next to this file
+rem Download method (tried in this order):
+rem   1) public repository -> plain download, no git and no token needed
+rem   2) git installed       -> sparse clone (uses your saved git credentials)
+rem   3) otherwise           -> GitHub API download with a read-only token, taken from the GITHUB_TOKEN
+rem                             environment variable or from sf_erp_token.txt next to this file
 rem Never touches SF ERP\data\ (database and backups).
 setlocal EnableExtensions
 chcp 65001 >nul
@@ -14,23 +15,29 @@ set "OWNER=alex122694"
 set "NAME=SF_ERP"
 set "BRANCH=main"
 set "REPO=https://github.com/%OWNER%/%NAME%.git"
+set "RAW=https://raw.githubusercontent.com/%OWNER%/%NAME%/%BRANCH%/release/SF%%20ERP-lite.zip"
 set "API=https://api.github.com/repos/%OWNER%/%NAME%/contents/release/SF%%20ERP-lite.zip?ref=%BRANCH%"
 
 set "TARGET=%~1"
-if "%TARGET%"=="" set /p "TARGET=Extract to which folder? (e.g. D:\) : "
-if "%TARGET%"=="" ( echo No folder given. & goto :fail )
+set "DEFAULT_TARGET=D:\"
+if "%TARGET%"=="" set /p "TARGET=Extract to which folder? [Enter = %DEFAULT_TARGET%] : "
+if "%TARGET%"=="" set "TARGET=%DEFAULT_TARGET%"
+if not exist "%TARGET:~0,3%" ( echo Drive "%TARGET:~0,2%" was not found. Is the USB drive plugged in? & goto :fail )
 
 set "WORK=%TEMP%\sf_erp_update_%RANDOM%%RANDOM%"
 mkdir "%WORK%" || goto :fail
 set "ZIP=%WORK%\SF ERP-lite.zip"
 
-where git >nul 2>nul
-if %errorlevel%==0 ( call :viagit ) else ( call :viaapi )
-if errorlevel 1 goto :fail
+call :viaraw
+if not exist "%ZIP%" (
+  where git >nul 2>nul
+  if errorlevel 1 ( call :viaapi ) else ( call :viagit )
+  if errorlevel 1 goto :fail
+)
 if not exist "%ZIP%" ( echo Download failed: zip not found. & goto :fail )
 
 if not exist "%TARGET%" mkdir "%TARGET%" || goto :fail
-set "APP=%TARGET%\SF ERP"
+if "%TARGET:~-1%"=="\" ( set "APP=%TARGET%SF ERP" ) else ( set "APP=%TARGET%\SF ERP" )
 if exist "%APP%\index.html" (
   copy /y "%APP%\index.html" "%APP%\index.html.bak" >nul
   echo Previous index.html saved as index.html.bak
@@ -44,6 +51,12 @@ rd /s /q "%WORK%" 2>nul
 echo.
 echo Done. Open "%APP%\index.html" with Edge or Chrome. Your data folder was left untouched.
 pause
+exit /b 0
+
+:viaraw
+echo Downloading %NAME% release (%BRANCH%) ...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -UseBasicParsing -Uri $env:RAW -OutFile $env:ZIP } catch { exit 1 }" >nul 2>nul
+if errorlevel 1 ( if exist "%ZIP%" del "%ZIP%" & echo Anonymous download not available ^(private repository?^); trying other methods ... )
 exit /b 0
 
 :viagit
