@@ -61,6 +61,17 @@ export function loadSql(): Promise<SqlJsStatic> {
   return sqlPromise;
 }
 
+const MAX_SQLITE_MB = 200;
+
+export interface BackupPreview {
+  name: string;
+  employees: number;
+  leaves: number;
+  from: string | null;
+  to: string | null;
+  bytes: Uint8Array;
+}
+
 export interface SaveStatus {
   savedAt: Date | null;
   saving: boolean;
@@ -183,6 +194,26 @@ export class LiteSource implements DataSource {
 
   backupNow(): Promise<string> {
     return this.store.backupNow(this.lastSaved);
+  }
+
+  /** 讀取使用者選的備份檔（sf_erp-YYYYMMDD.sqlite 或 sf_erp.sqlite）；回傳摘要與已升級到最新版的內容，還沒有動到目前的資料 */
+  async previewBackup(file: File): Promise<BackupPreview> {
+    checkSize(file, MAX_SQLITE_MB);
+    const db = Db.open(this.SQL, new Uint8Array(await file.arrayBuffer()));
+    try {
+      return { name: file.name, ...db.summary(), bytes: db.export() };
+    } catch {
+      throw new UserError(msg('這不是 SF ERP 的備份檔'));
+    }
+  }
+
+  /** 用備份整份取代目前的資料；取代前先把目前的資料另存到 backup/，存檔失敗時還原成原本的資料 */
+  async restoreBackup(preview: BackupPreview): Promise<string> {
+    if (this.readOnly) throw new UserError(msg('這個分頁是唯讀的：已有另一個分頁開著同一份資料'));
+    const snapshot = await this.store.saveBeforeRestore(this.lastSaved);
+    await this.mutate(() => { this.db = Db.open(this.SQL, preview.bytes); });
+    this.store.setBackupKeep(Number(this.cached.settings.backup_keep) || 30);
+    return snapshot;
   }
 
   /** 匯出目前的資料檔，給標準版匯入或另存 */

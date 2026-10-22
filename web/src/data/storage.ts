@@ -173,6 +173,15 @@ export class FolderStore {
     return name;
   }
 
+  /** 還原備份前，把目前的資料另存成 backup/sf_erp-還原前-YYYYMMDD-HHMMSS.sqlite（不會被保留份數清掉） */
+  async saveBeforeRestore(bytes: Uint8Array): Promise<string> {
+    const backups = await this.dir.getDirectoryHandle(BACKUP_DIR, { create: true });
+    const stamp = localStamp().replace(/[-: ]/g, '').replace(/^(\d{8})(\d{6}).*/, '$1-$2');
+    const name = `sf_erp-before-restore-${stamp}.sqlite`;
+    await writeFile(backups, name, bytes);
+    return name;
+  }
+
   private async backupNames(backups: FileSystemDirectoryHandle): Promise<string[]> {
     const names: string[] = [];
     for await (const h of backups.values()) {

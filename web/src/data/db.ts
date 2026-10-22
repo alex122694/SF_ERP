@@ -91,6 +91,12 @@ export class Db {
     return this.sql.export();
   }
 
+  /** 還原前給使用者確認用的摘要：員工數、紀錄數、紀錄的日期範圍 */
+  summary(): { employees: number; leaves: number; from: string | null; to: string | null } {
+    const r = this.rows('SELECT (SELECT count(*) FROM employee) AS e, count(*) AS n, min(date) AS a, max(date) AS b FROM leave_record')[0];
+    return { employees: Number(this.rows('SELECT count(*) AS n FROM employee')[0].n), leaves: Number(r.n), from: textOrNull(r.a), to: textOrNull(r.b) };
+  }
+
   private rows(q: string, params: SqlValue[] = []): Row[] {
     const st = this.sql.prepare(q);
     try {

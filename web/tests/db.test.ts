@@ -157,6 +157,15 @@ describe('Db', () => {
     expect(st.departments).toEqual([]);
     expect(st.employees[0].departmentId).toBeNull();
   });
+  it('備份檔摘要：員工數、紀錄數與日期範圍；不是資料檔時給出可讀的錯誤', async () => {
+    const { db, id } = await seeded();
+    expect(db.summary()).toEqual({ employees: 1, leaves: 0, from: null, to: null });
+    db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'sick', start: '09:30', end: '12:00', reason: '' });
+    db.saveLeave({ employeeId: id, date: '2026-10-21', type: 'sick', start: '09:30', end: '12:00', reason: '' });
+    const reopened = Db.open(SQL, db.export());
+    expect(reopened.summary()).toEqual({ employees: 1, leaves: 2, from: '2026-10-19', to: '2026-10-21' });
+    expect(() => Db.open(SQL, new Uint8Array([1, 2, 3, 4]))).toThrow('資料檔損毀');
+  });
   it('有紀錄的日子不能改為放假日', async () => {
     const { db, id } = await seeded();
     db.saveLeave({ employeeId: id, date: '2026-10-19', type: 'annual', start: '09:30', end: '18:30', reason: '' });

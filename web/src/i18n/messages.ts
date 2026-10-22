@@ -455,6 +455,14 @@ export const M: Record<string, [string, string, string]> = {
   '匯出 Excel': ["Export Excel", "Excel 出力", "Excel 내보내기"],
 
   // ---------- 制度與設定 ----------
+  '這不是 SF ERP 的備份檔': ["This is not an SF ERP backup file", "SF ERP のバックアップファイルではありません", "SF ERP 백업 파일이 아닙니다"],
+  '用這份備份取代目前的資料？': ["Replace the current data with this backup?", "このバックアップで現在のデータを置き換えますか？", "이 백업으로 현재 데이터를 바꿀까요?"],
+  '員工 {0} 人、請假紀錄 {1} 筆': ["{0} {0|employee|employees}, {1} leave {1|record|records}", "従業員 {0} 人、休暇記録 {1} 件", "직원 {0}명, 휴가 기록 {1}건"],
+  '（{0} ～ {1}）': [" ({0} – {1})", "（{0} ～ {1}）", " ({0} ~ {1})"],
+  '目前的資料會整份被取代；取代前會先另存到 backup/ 資料夾（sf_erp-before-restore-…），之後還能再還原回來。': ["The current data will be replaced entirely. It is first saved in the backup/ folder (sf_erp-before-restore-…) so you can restore it again later.", "現在のデータは丸ごと置き換えられます。置き換える前に backup/ フォルダー（sf_erp-before-restore-…）へ保存するので、後で元に戻せます。", "현재 데이터는 통째로 바뀝니다. 바꾸기 전에 backup/ 폴더(sf_erp-before-restore-…)에 저장하므로 나중에 다시 복원할 수 있습니다."],
+  '取代並還原': ["Replace and restore", "置き換えて復元", "바꾸고 복원"],
+  '已還原；原本的資料另存為 backup/{0}': ["Restored; the previous data was saved as backup/{0}", "復元しました。元のデータは backup/{0} に保存しました", "복원했습니다. 이전 데이터는 backup/{0}에 저장했습니다"],
+  '從備份還原': ["Restore from backup", "バックアップから復元", "백업에서 복원"],
   '已匯入舊版資料：員工 {0} 人、紀錄 {1} 筆、行事曆 {2}（手動修改 {3} 天）': ["Imported old data: {0} {0|employee|employees}, {1} {1|record|records}, calendars {2} ({3} manual {3|change|changes})", "旧版データを取り込みました：従業員 {0} 人、記録 {1} 件、カレンダー {2}（手動変更 {3} 日）", "이전 데이터 가져옴: 직원 {0}명, 기록 {1}건, 캘린더 {2} (수동 변경 {3}일)"],
   '規則直接取自系統設定，這裡改了，登記與計算就會照新設定走。': ["Rules come straight from the system settings; changes here apply to recording and calculations right away.", "ルールはシステム設定から直接読み込まれます。ここで変更すると、登録と計算にすぐ反映されます。", "규칙은 시스템 설정에서 바로 가져옵니다. 여기서 바꾸면 등록과 계산에 바로 적용됩니다."],
   '最小單位': ["Minimum unit", "最小単位", "최소 단위"],

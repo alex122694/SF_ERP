@@ -13,6 +13,27 @@ export function SettingsPage() {
   const { st, src, lite, run, toast, today } = useApp();
   const [info, setInfo] = useState<FolderInfo | null>(null);
   const legacyInput = useRef<HTMLInputElement>(null);
+  const backupInput = useRef<HTMLInputElement>(null);
+  const { confirm } = useApp();
+  // 選備份檔 → 顯示內容摘要確認 → 整份取代（取代前目前的資料先另存到 backup/）
+  const restore = async (file: File | undefined) => {
+    if (backupInput.current) backupInput.current.value = '';
+    if (!file || !lite) return;
+    const p = await run(() => lite.previewBackup(file));
+    if (!p) return;
+    const ok = await confirm({
+      title: t('用這份備份取代目前的資料？'),
+      body: <div className="stack" style={{ gap: 6 }}>
+        <b style={{ wordBreak: 'break-all' }}>{p.name}</b>
+        <span>{t('員工 {0} 人、請假紀錄 {1} 筆', [p.employees, p.leaves])}{p.from && p.to ? t('（{0} ～ {1}）', [p.from, p.to]) : ''}</span>
+        <span className="muted">{t('目前的資料會整份被取代；取代前會先另存到 backup/ 資料夾（sf_erp-before-restore-…），之後還能再還原回來。')}</span>
+      </div>,
+      ok: t('取代並還原'), danger: true,
+    });
+    if (!ok) return;
+    const snap = await run(() => lite.restoreBackup(p));
+    if (snap) { toast(t('已還原；原本的資料另存為 backup/{0}', [snap])); setInfo(await lite.info()); }
+  };
   useEffect(() => { lite?.info().then(setInfo).catch(() => setInfo(null)); }, [lite, st]);
 
   const importLegacy = async (file: File | undefined) => {
@@ -132,9 +153,11 @@ export function SettingsPage() {
                 const n = await run(() => lite.backupNow());
                 if (n) { toast(t('已備份到 backup/{0}', [n])); setInfo(await lite.info()); }
               }}>{t('立即備份')}</button>
+              <button type="button" className="btn sm" disabled={src.readOnly} onClick={() => backupInput.current?.click()}><Icon name="upload" size={16} />{t('從備份還原')}</button>
               <button type="button" className="btn sm" onClick={() => downloadBlob(`sf_erp_${today}.sqlite`, lite.exportBlob())}><Icon name="download" size={16} />{t('匯出給標準版')}</button>
               <button type="button" className="btn sm" onClick={() => { location.hash = ''; location.reload(); }}>{t('換資料夾')}</button>
             </div>
+            <input ref={backupInput} type="file" accept=".sqlite,.sqlite3,.db,application/vnd.sqlite3" hidden onChange={(e) => restore(e.target.files?.[0])} />
           </section>
         )}
 
