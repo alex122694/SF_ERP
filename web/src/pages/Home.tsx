@@ -29,7 +29,7 @@ export function HomePage() {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-  const clock = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+  const clock = [now.getHours(), now.getMinutes()].map((n) => String(n).padStart(2, '0')).join(':');
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const away = todays.filter((l) => l.type !== 'late' && toMin(l.start) <= nowMin && nowMin < toMin(l.end));
 
