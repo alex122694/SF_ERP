@@ -16,6 +16,8 @@
     { "start": "09:30", "end": "18:00", "minutes": 420 }
   ],
   "deduction": [
+    { "minutes": 480, "salary": 36000, "payRatio": 0, "amount": 1200 },
+    { "minutes": 480, "salary": 40000, "payRatio": 0.5, "amount": 667 },
     { "minutes": 300, "salary": 36000, "payRatio": 0.5, "amount": 375 },
     { "minutes": 60, "salary": 36000, "payRatio": 0, "amount": 150 },
     { "minutes": 450, "salary": 36000, "payRatio": 1, "amount": 0 },

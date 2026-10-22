@@ -119,6 +119,8 @@ const pct = (ratio: number) => Math.round(ratio * 100);
  * 金額一律逐筆加總後才取整一次（sumDeduction），畫面上單筆顯示用 roundYuan
  */
 export function deduction(minutes: number, salary: number, payRatio: number): number {
+  // 整天（8h）直接用日薪（月薪 ÷ 30），不經時薪
+  if (minutes === HOURS_PER_DAY * 60) return (salary * (100 - pct(payRatio))) / (DAYS_PER_MONTH * 100);
   return (minutes * salary * (100 - pct(payRatio))) / (60 * DAYS_PER_MONTH * HOURS_PER_DAY * 100);
 }
 
