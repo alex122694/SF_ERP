@@ -95,7 +95,7 @@ export function OverviewPage() {
   const [exporting, setExporting] = useState(false);
 
   return (
-    <div className="page">
+    <div className="page fill">
       <div className="page-head">
         <h1 style={{ flex: '1 1 240px' }}>{t('請假總覽')}</h1>
         <div role="group" aria-label={t('區間方式')} className="seg">
@@ -141,7 +141,7 @@ export function OverviewPage() {
         ))}
       </div>
 
-      <div className="card table-box">
+      <div className="card table-box body-scroll">
         {rows.length === 0 ? <div className="empty">{t('這段期間沒有員工資料。')}</div> : (
           <table className="tbl ov">
             <thead>

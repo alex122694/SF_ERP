@@ -47,7 +47,7 @@ export function EmployeesPage() {
   ]);
 
   return (
-    <div className="page">
+    <div className="page fill">
       <div className="page-head">
         <div className="title">
           <h1>{t('員工主檔')}</h1>
@@ -85,7 +85,7 @@ export function EmployeesPage() {
         </label>
       </div>
 
-      <div className="card table-box">
+      <div className="card table-box body-scroll">
         {rows.length === 0 ? <div className="empty">{st.employees.length ? t('沒有符合的員工。') : t('還沒有員工，按「新增員工」開始。')}</div> : (
           <table className="tbl">
             <thead><tr><th>{t('員工')}</th><th>{t('部門')}</th><th>{t('到職日')}</th><th>{t('年資')}</th><th className="r">{t('月本薪')}</th><th style={{ minWidth: 220 }}>{t('特休（本週年）')}</th><th>{t('週年到期')}</th></tr></thead>

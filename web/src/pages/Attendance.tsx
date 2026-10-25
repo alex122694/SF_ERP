@@ -137,7 +137,7 @@ export function AttendancePage() {
         </div>
       )}
 
-      <div className="row-wrap">
+      <div className="row-wrap cal-row">
         <div style={{ flex: '3 1 600px', minWidth: 0 }}>
           {view === 'cal' ? (
             <div className="card" style={{ overflow: 'hidden' }}>
@@ -215,7 +215,7 @@ export function AttendancePage() {
           )}
         </div>
 
-        <aside className="card pad stack" aria-label={t('當日明細')} style={{ flex: '1 1 300px', minWidth: 0 }}>
+        <aside className="card pad stack day-panel" aria-label={t('當日明細')} style={{ flex: '1 1 300px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <h2 className="spacer">{mdText(sel)}</h2>
             {selOverride && <span className="tag" title={t('手動修改原因')}>{selDay?.reason || t('手動')}</span>}

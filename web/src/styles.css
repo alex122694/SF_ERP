@@ -108,6 +108,17 @@ select.input { padding-right: 8px; }
 
 /* 表格 */
 .table-box { overflow-x: auto; }
+/* 頁面剛好佔滿視窗（扣掉內容區上下留白），表格框內自己捲動：標題列與合計列固定，只捲動員工資料列 */
+.page.fill { height: calc(100vh - 112px); }
+.page.fill > * { flex: none; }
+.page.fill > .body-scroll { flex: 1 1 auto; min-height: 240px; overflow: auto; }
+.body-scroll thead th { position: sticky; top: 0; z-index: 2; background: var(--raised); }
+.body-scroll tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--raised); }
+/* 出缺勤月曆右側當日明細：與月曆並排時高度對齊月曆（不撐高頁面、不壓縮月曆），紀錄多時在面板內捲動 */
+@media (min-width: 1240px) {
+  .cal-row { align-items: stretch; }
+  .day-panel { contain: size; min-height: 480px; overflow-y: auto; }
+}
 .tbl { width: 100%; border-collapse: collapse; }
 .tbl th { font-size: 12px; font-weight: 700; color: var(--muted); text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .tbl td { padding: 12px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -188,6 +199,8 @@ dialog::backdrop { background: rgba(5,8,12,.55); }
   .clock { display: none; }
   .nav-list { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; }
   .nav { flex: none; }
+  .page.fill { height: auto; }
+  .page.fill > .body-scroll { max-height: 75vh; }
   .side-foot { margin-top: 0; flex-direction: row; align-items: center; justify-content: space-between; }
   .cell { min-height: 76px; padding: 4px; }
   .chip { font-size: 11px; padding: 0 3px; }
