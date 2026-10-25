@@ -107,6 +107,14 @@ select.input { padding-right: 8px; }
 .empty { padding: 40px; text-align: center; color: var(--muted); }
 
 /* 表格 */
+/* 捲軸：細、圓角、透明軌道，滑鼠移上去轉為主題色（Chrome／Edge 用 ::-webkit-scrollbar，其他瀏覽器用標準屬性） */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 40%, transparent); border: 3px solid transparent; border-radius: 999px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 40%, transparent) transparent; }
+}
 .table-box { overflow-x: auto; }
 /* 頁面剛好佔滿視窗（扣掉內容區上下留白），表格框內自己捲動：標題列與合計列固定，只捲動員工資料列 */
 .page.fill { height: calc(100vh - 112px); }
@@ -114,10 +122,18 @@ select.input { padding-right: 8px; }
 .page.fill > .body-scroll { flex: 1 1 auto; min-height: 240px; overflow: auto; }
 .body-scroll thead th { position: sticky; top: 0; z-index: 2; background: var(--raised); }
 .body-scroll tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--raised); }
-/* 出缺勤月曆右側當日明細：與月曆並排時高度對齊月曆（不撐高頁面、不壓縮月曆），紀錄多時在面板內捲動 */
+/* 出缺勤月曆：月曆框內捲動時星期列固定 */
+.cal-card { overflow: hidden; }
+.cal-card .cal-head { position: sticky; top: 0; z-index: 2; background: var(--raised); }
+/* 月曆與當日明細並排時（寬螢幕），頁面剛好佔滿視窗不捲動；月曆格子大小不變，改在月曆框內捲動，右側明細也在自己框內捲動 */
 @media (min-width: 1240px) {
-  .cal-row { align-items: stretch; }
-  .day-panel { contain: size; min-height: 480px; overflow-y: auto; }
+  .page.fill-wide { height: calc(100vh - 112px); }
+  .page.fill-wide > * { flex: none; }
+  .page.fill-wide > .cal-row { flex: 1 1 auto; min-height: 360px; flex-wrap: nowrap; align-items: stretch; }
+  .cal-row > * { min-height: 0; }
+  .cal-col { display: flex; flex-direction: column; }
+  .cal-col > .cal-card { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  .day-panel { overflow-y: auto; }
 }
 .tbl { width: 100%; border-collapse: collapse; }
 .tbl th { font-size: 12px; font-weight: 700; color: var(--muted); text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }

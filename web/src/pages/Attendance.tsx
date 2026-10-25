@@ -81,7 +81,7 @@ export function AttendancePage() {
   };
 
   return (
-    <div className="page">
+    <div className="page fill-wide">
       <div className="page-head">
         <h1 style={{ flex: '1 1 240px' }}>{t('出缺勤月曆')}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -138,9 +138,9 @@ export function AttendancePage() {
       )}
 
       <div className="row-wrap cal-row">
-        <div style={{ flex: '3 1 600px', minWidth: 0 }}>
+        <div className="cal-col" style={{ flex: '3 1 600px', minWidth: 0 }}>
           {view === 'cal' ? (
-            <div className="card" style={{ overflow: 'hidden' }}>
+            <div className="card cal-card">
               <div className="cal-head">{[1, 2, 3, 4, 5, 6, 0].map((d) => <div key={d}>{weekdayName(d)}</div>)}</div>
               <div className="cal">
                 {cells.map((d, i) => {
@@ -177,7 +177,7 @@ export function AttendancePage() {
               </div>
             </div>
           ) : (
-            <div className="card table-box" style={{ padding: 16 }}>
+            <div className="card table-box cal-card" style={{ padding: 16 }}>
               {shown.length === 0 ? <div className="empty">{t('這個月沒有在職員工。')}</div> : (
                 <table className="mx">
                   <thead>
