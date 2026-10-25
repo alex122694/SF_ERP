@@ -5,10 +5,25 @@ import { LeaveForm } from '../ui/LeaveForm';
 import { Icon } from '../ui/icons';
 import { LeaveAmount, useAnnualUnit } from '../ui/annual-unit';
 import { amountText, mdText, ntd, typeColor, typeName, typeShort, typeTint, weekdayName, ymText } from '../ui/format';
-import { empOf, typeOf } from '../ui/derive';
-import { daysInMonth, isDateStr, weekday, ymd, type LeaveRecord } from '../rules/rules';
+import { empOf, isAuto, typeOf } from '../ui/derive';
+import { daysInMonth, isDateStr, isTyphoonDay, weekday, ymd, type LeaveRecord } from '../rules/rules';
 import { t } from '../i18n';
 import { DayReasonDialog } from '../ui/DayReasonDialog';
+import { lunarText, solarTermOf } from '../ui/lunar';
+import { festivalsOf } from '../ui/festivals';
+
+/** 月曆顯示選項（農民曆、節日）：只記在這個瀏覽器，預設開啟 */
+function useCalOption(key: string): [boolean, () => void] {
+  const k = `sf_erp.cal.${key}`;
+  const [on, setOn] = useState(() => {
+    try { return localStorage.getItem(k) !== '0'; } catch { return true; }
+  });
+  const toggle = () => {
+    setOn(!on);
+    try { localStorage.setItem(k, on ? '0' : '1'); } catch { /* 存不了就只在這次有效 */ }
+  };
+  return [on, toggle];
+}
 
 export function AttendancePage() {
   const { st, cal, today, route, src, run, confirm } = useApp();
@@ -21,6 +36,8 @@ export function AttendancePage() {
   const view = route.q.get('view') === 'mx' ? 'mx' : 'cal';
   const empFilter = Number(route.q.get('emp')) || 0;
   const [editing, setEditing] = useState<LeaveRecord | null>(null);
+  const [showLunar, toggleLunar] = useCalOption('lunar');
+  const [showFest, toggleFest] = useCalOption('festival');
 
   const nav = (patch: Record<string, string | number | null>) => {
     const q = new URLSearchParams({ ym, sel, view });
@@ -88,6 +105,12 @@ export function AttendancePage() {
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
         {st.leaveTypes.map((tp) => <span key={tp.code} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="dot" style={{ background: typeColor(tp) }} />{typeName(tp)}</span>)}
         <span className="muted" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--holiday)', border: '1px solid var(--line)' }} />{t('放假日')}</span>
+        {view === 'cal' && (
+          <div role="group" aria-label={t('月曆顯示')} style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <button type="button" className={showLunar ? 'btn sm on' : 'btn sm'} aria-pressed={showLunar} onClick={toggleLunar}>{t('農民曆')}</button>
+            <button type="button" className={showFest ? 'btn sm on' : 'btn sm'} aria-pressed={showFest} onClick={toggleFest}>{t('節日')}</button>
+          </div>
+        )}
       </div>
 
       {absentType && (
@@ -128,17 +151,21 @@ export function AttendancePage() {
                   const info = st.days.get(date);
                   const manual = info?.override != null;
                   const people = new Set(list.map((l) => l.employeeId)).size;
+                  const term = showLunar ? solarTermOf(date) : undefined;
+                  const fests = showFest ? festivalsOf(date).map((x) => t(x)) : [];
                   return (
                     <button key={i} type="button" className={`cell${hol ? ' hol' : ''}${sel === date ? ' sel' : ''}`}
-                      aria-label={t('{0} 月 {1} 日，{2}', [m, d, hol ? t('放假日') : t('{0} 筆紀錄', [list.length])])} aria-pressed={sel === date} title={manual && info?.reason ? t('手動：{0}', [info.reason]) : undefined}
+                      aria-label={t('{0} 月 {1} 日，{2}', [m, d, hol ? t('放假日') : t('{0} 筆紀錄', [list.length])])} aria-pressed={sel === date} title={manual && info?.reason ? info.reason : undefined}
                       onClick={() => nav({ sel: date })}>
                       <span className="cell-top">
                         <span className={date === today ? 'day-num today num' : 'day-num num'} style={hol && date !== today ? { color: 'var(--muted)' } : undefined}>{d}</span>
+                        {showLunar && <span className={term ? 'lunar term' : 'lunar'}>{term ?? lunarText(date)}</span>}
                         <span className="spacer" />
-                        {manual && <span className="muted" style={{ fontSize: 11 }}>{t('手動')}</span>}
                         {people > 0 && <span className="tag num" style={{ padding: '0 8px' }}>{t('{0} 人', [people])}</span>}
-                        {hol && !manual && <span className="muted" style={{ fontSize: 11 }}>{t('放假')}</span>}
+                        {hol && !manual && <span className="muted" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{t('放假')}</span>}
                       </span>
+                      {manual && <span className="cell-note">{info?.reason || t('手動')}</span>}
+                      {fests.length > 0 && <span className="fest">{fests.join(t('、'))}</span>}
                       {list.slice(0, 3).map((l) => {
                         const tp = typeOf(st, l.type);
                         return <span key={l.id} className="chip" style={{ background: typeTint(tp) }}><span className="dot" style={{ background: typeColor(tp) }} />{empOf(st, l.employeeId)?.name} {typeName(tp)} {amountText(l, unit)}</span>;
@@ -191,12 +218,12 @@ export function AttendancePage() {
         <aside className="card pad stack" aria-label={t('當日明細')} style={{ flex: '1 1 300px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <h2 className="spacer">{mdText(sel)}</h2>
-            {selOverride && <span className="tag">{t('手動')}</span>}
+            {selOverride && <span className="tag" title={t('手動修改原因')}>{selDay?.reason || t('手動')}</span>}
             {selHoliday ? <span className="tag">{t('放假日')}</span> : <span className="tag num">{t('{0} 筆', [selList.length])}</span>}
           </div>
-          {selOverride && <span className="muted small">{t('手動修改原因：{0}', [selDay?.reason || t('（未填）')])}</span>}
+          {isTyphoonDay(selDay) && <span className="muted small">{t('颱風停班：當天在職員工自動算颱風假，扣一日薪（本薪 ÷ 30）。')}</span>}
           {selHoliday === undefined && <span className="muted">{t('這一年的行事曆尚未匯入。')}</span>}
-          {selHoliday && selList.length === 0 && <span className="muted">{t('放假日不能登記。若公司這天要上班，可以改為上班日（會標示「手動」）。')}</span>}
+          {selHoliday && selList.length === 0 && <span className="muted">{t('放假日不能登記。若公司這天要上班，可以改為上班日（要填原因，會顯示在月曆上）。')}</span>}
           {selHoliday === false && selList.length === 0 && <span className="muted">{t('這天沒有請假紀錄。')}</span>}
           {selList.map((l) => {
             const e = empOf(st, l.employeeId);
@@ -209,8 +236,10 @@ export function AttendancePage() {
                   <span className="muted num" style={{ fontSize: 12 }}>{l.start}–{l.end} · <LeaveAmount rec={l} /> · {t('扣 {0}', [ntd(l.deduction)])}</span>
                   {l.reason && <span className="muted" style={{ fontSize: 12 }}>{l.reason}</span>}
                 </div>
-                <button type="button" className="btn sm" onClick={() => setEditing(l)} disabled={src.readOnly}>{t('編輯')}</button>
-                <button type="button" className="btn sm danger" aria-label={t('刪除 {0} 的紀錄', [e?.name ?? ''])} onClick={() => del(l)} disabled={src.readOnly}>{t('刪除')}</button>
+                {isAuto(l) ? <span className="tag">{t('自動')}</span> : <>
+                  <button type="button" className="btn sm" onClick={() => setEditing(l)} disabled={src.readOnly}>{t('編輯')}</button>
+                  <button type="button" className="btn sm danger" aria-label={t('刪除 {0} 的紀錄', [e?.name ?? ''])} onClick={() => del(l)} disabled={src.readOnly}>{t('刪除')}</button>
+                </>}
               </div>
             );
           })}

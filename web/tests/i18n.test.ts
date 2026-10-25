@@ -10,9 +10,9 @@ const SRC = path.join(__dirname, '..', 'src');
 // 中文字與全形標點（、（）＝ 等），翻成其他語言時都要換掉
 const CJK = /[\u3000-\u303f\u4e00-\u9fff\uff00-\uffef]/;
 
-/** 不是畫面文字的中文：測試用範例資料、資料表預設值、翻譯模組本身、政府日曆的解析關鍵字、各語言的星期表 */
-const SKIP_FILES = ['data/devSeed.ts', 'data/schema.ts', 'i18n/index.ts', 'i18n/messages.ts'];
-const SKIP_LINE = [/const HEADER = \[/, /cell\.text\?\.trim\(\) !== '放假日'/, /cell\.text !== '日'/, /^\s*(zh|ja): \[/, /if \(getLang\(\) === 'zh'\) return/, /getLang\(\) === 'en' \|\| getLang\(\) === 'ko' \?/];
+/** 不是畫面文字的中文：測試用範例資料、資料表預設值、翻譯模組本身、農民曆（各語言都照中文顯示）、政府日曆的解析關鍵字、各語言的星期表 */
+const SKIP_FILES = ['data/devSeed.ts', 'data/schema.ts', 'i18n/index.ts', 'i18n/messages.ts', 'ui/lunar.ts'];
+const SKIP_LINE = [/const HEADER = \[/, /cell\.text\?\.trim\(\) !== '放假日'/, /cell\.text !== '日'/, /^\s*(zh|ja): \[/, /if \(getLang\(\) === 'zh'\) return/, /getLang\(\) === 'en' \|\| getLang\(\) === 'ko' \?/, /day\.reason\?\.includes\('颱風'\)/];
 
 function files(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) => {

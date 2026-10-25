@@ -29,7 +29,7 @@ function Clock() {
   const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const holiday = cal.isHoliday(date);
   return (
-    <div className="stack" style={{ gap: 2, padding: '0 12px 12px' }}>
+    <div className="stack clock" style={{ gap: 2, padding: '0 12px 12px' }}>
       <b className="num" style={{ fontSize: 26, lineHeight: 1.2 }}>{pad(now.getHours())}:{pad(now.getMinutes())}</b>
       <span className="muted small">{longDate(date)}</span>
       <span className="muted small" style={{ fontWeight: 700 }}>{holiday === undefined ? t('行事曆未匯入') : holiday ? t('放假日') : t('上班日')}</span>

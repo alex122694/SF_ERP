@@ -6,7 +6,7 @@ import { Annual, AnnualNum, AnnualUnit } from './annual-unit';
 import { fmtHours, mdText, money, ntd, typeName } from './format';
 import { msgText, t, tr } from '../i18n';
 import {
-  LATE_END_MAX, LATE_START, LEAVE_HINT, SEGMENTS, TIME_SLOTS, checkLeave, checkLeaveDays, expandLeaveRange, hourlyRate, isDateStr, isEmployedOn, payText,
+  TYPHOON, LATE_END_MAX, LATE_START, LEAVE_HINT, SEGMENTS, TIME_SLOTS, checkLeave, checkLeaveDays, expandLeaveRange, hourlyRate, isDateStr, isEmployedOn, payText,
   type LeaveCheck, type LeaveInput, type LeaveRecord,
 } from '../rules/rules';
 import { msg } from '../rules/msg';
@@ -49,7 +49,7 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
   const isSegOnly = !!type?.segmentOnly;
 
   const emps = useMemo(() => st.employees.filter((e) => e.id === existing?.employeeId || (isDateStr(f.date) && isEmployedOn(e, f.date))), [st.employees, f.date, existing]);
-  const types = st.leaveTypes.filter((x) => !(x.femaleOnly && emp && emp.gender !== 'F'));
+  const types = st.leaveTypes.filter((x) => x.code !== TYPHOON && !(x.femaleOnly && emp && emp.gender !== 'F'));
 
   const ctx = { ...st, calendars: cal };
   const canRange = variant === 'page' && !existing && !isLate;
@@ -264,7 +264,7 @@ export function LeaveForm({ variant, initial, existing, onSaved, onCancel, showD
           <div className="kvrow"><span className="muted">{t('時數')}</span><b className="num">{type ? amountText : '—'}</b></div>
           {exp && days.length > 0 && <div className="kvrow"><span className="muted">{t('登記筆數')}</span><b className="num">{days.length}</b></div>}
           {exp && exp.skipped.length > 0 && <span className="muted small">{t('略過 {0} 天放假日', [exp.skipped.length])}</span>}
-          <div className="kvrow"><span className="muted">{t('時薪（本薪 ÷ 30 ÷ 8）')}</span><b className="num">{emp ? `NT$ ${hourlyRate(check.salary).toFixed(1)}` : '—'}</b></div>
+          <div className="kvrow"><span className="muted">{t('時薪（本薪 ÷ 30 ÷ 8）')}</span><b className="num">{emp ? `NT$ ${hourlyRate(check.salary).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : '—'}</b></div>
           <div className="kvrow"><span className="muted">{t('給薪比例')}</span><b className="num">{type ? `${Math.round(type.payRatio * 100)}%` : '—'}</b></div>
           <div className="kvrow"><span className="muted">{t('扣除金額')}</span><b className="num" style={{ fontSize: 20, color: 'var(--accent)' }}>NT$ {money(check.deduction)}</b></div>
           {check.annual?.period && (

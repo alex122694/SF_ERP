@@ -123,4 +123,8 @@ CREATE TABLE department (
 );
 ALTER TABLE employee ADD COLUMN department_id INTEGER REFERENCES department(id);
 `,
+  // 颱風假：不能手動登記，颱風停班日（手動放假且原因含「颱風」）當天在職員工自動不支薪一天
+  `
+INSERT OR IGNORE INTO leave_type VALUES ('typhoon', '颱風假', 0, 480, 0, 0, NULL, 0, 'typhoon', 8);
+`,
 ];

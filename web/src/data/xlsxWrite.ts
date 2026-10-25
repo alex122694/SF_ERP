@@ -1,4 +1,4 @@
-// 產生簡單的 .xlsx（在瀏覽器內執行，不用外部套件）：單一工作表、置中對齊、自動換行、依行數設定列高
+// 產生簡單的 .xlsx（在瀏覽器內執行，不用外部套件）：單一工作表、置中對齊、自動換行、依行數設定列高、整數加千分位、合併儲存格
 // xlsx 是 zip 包 XML；這裡用不壓縮（stored）的 zip，檔案小、程式也短
 
 export type XlsxCell = string | number;
@@ -9,6 +9,8 @@ export interface XlsxSheet {
   widths?: number[];
   /** 粗體的列（從 0 起算），例如標題列、合計列 */
   boldRows?: number[];
+  /** 合併儲存格：從 (row, col) 起往下合併 rows 列（從 0 起算）；被合併的格子內容不輸出 */
+  merges?: { row: number; col: number; rows: number }[];
 }
 
 const LINE_PT = 18; // 每一行文字的列高（pt）
@@ -78,8 +80,9 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const colName = (i: number): string => (i >= 26 ? colName(Math.floor(i / 26) - 1) : '') + String.fromCharCode(65 + (i % 26));
 const linesOf = (v: XlsxCell) => (typeof v === 'string' ? v.split('\n').length : 1);
 
-function sheetXml({ rows, widths = [], boldRows = [] }: XlsxSheet): string {
+function sheetXml({ rows, widths = [], boldRows = [], merges = [] }: XlsxSheet): string {
   const bold = new Set(boldRows);
+  const hidden = new Set(merges.flatMap((m) => Array.from({ length: m.rows - 1 }, (_, i) => `${m.row + 1 + i},${m.col}`)));
   const cols = widths.length
     ? `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>`
     : '';
@@ -88,7 +91,9 @@ function sheetXml({ rows, widths = [], boldRows = [] }: XlsxSheet): string {
     const ht = Math.max(1, ...row.map(linesOf)) * LINE_PT;
     const cells = row.map((v, c) => {
       const ref = `${colName(c)}${r + 1}`;
-      if (typeof v === 'number') return `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+      if (hidden.has(`${r},${c}`)) return `<c r="${ref}" s="${s}"/>`;
+      // 整數用千分位格式（樣式 3、4），仍是數字，Excel 可以加總；有小數的照原樣
+      if (typeof v === 'number') return `<c r="${ref}" s="${Number.isInteger(v) ? s + 2 : s}"><v>${v}</v></c>`;
       if (v === '') return `<c r="${ref}" s="${s}"/>`;
       return `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
     }).join('');
@@ -97,19 +102,23 @@ function sheetXml({ rows, widths = [], boldRows = [] }: XlsxSheet): string {
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
     + '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
-    + `${cols}<sheetData>${body}</sheetData></worksheet>`;
+    + `${cols}<sheetData>${body}</sheetData>`
+    + (merges.length ? `<mergeCells count="${merges.length}">${merges.map((m) => `<mergeCell ref="${colName(m.col)}${m.row + 1}:${colName(m.col)}${m.row + m.rows}"/>`).join('')}</mergeCells>` : '')
+    + '</worksheet>';
 }
 
-// 樣式 1：水平、垂直置中＋自動換行；樣式 2：同上再加粗
+// 樣式 1：水平、垂直置中＋自動換行；樣式 2：同上再加粗；樣式 3、4：同 1、2 再加千分位（#,##0）
 const STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
   + '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>'
   + '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
   + '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
   + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-  + '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+  + '<cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
   + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
-  + '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf></cellXfs>'
+  + '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+  + '<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+  + '<xf numFmtId="3" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf></cellXfs>'
   + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
   + '</styleSheet>';
 

@@ -1,6 +1,19 @@
 // 由狀態推導出各頁需要的數字
 import type { State } from '../data/db';
-import { annualStatus, asOfDate, isEmployedOn, settlementsDue, type Employee } from '../rules/rules';
+import { TYPHOON, annualStatus, asOfDate, isEmployedOn, settlementsDue, typhoonLeaves, type Employee } from '../rules/rules';
+
+/** 畫面用的狀態：加上颱風停班日自動算出的颱風假紀錄（依日期排序） */
+export function withTyphoon(st: State): State {
+  const tp = st.leaveTypes.find((x) => x.code === TYPHOON);
+  if (!tp) return st;
+  const extra = typhoonLeaves(st.employees, st.days, tp.payRatio);
+  if (!extra.length) return st;
+  const leaves = [...st.leaves, ...extra].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return { ...st, leaves };
+}
+
+/** 自動產生的紀錄（颱風假）不能編輯、刪除 */
+export const isAuto = (l: { id: number }) => l.id < 0;
 
 export const typeOf = (st: State, code: string) => st.leaveTypes.find((t) => t.code === code);
 export const empOf = (st: State, id: number) => st.employees.find((e) => e.id === id);

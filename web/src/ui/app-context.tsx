@@ -4,6 +4,7 @@ import { UserError, calendarsOf, localDate, type State } from '../data/db';
 import type { DataSource, LiteSource } from '../data/source';
 import type { Calendars } from '../rules/rules';
 import { errorText, msgText, t } from '../i18n';
+import { withTyphoon } from './derive';
 
 export interface Route {
   page: string;
@@ -58,7 +59,8 @@ export function useApp(): Ctx {
 }
 
 export function AppProvider({ src, children }: { src: DataSource; children: ReactNode }) {
-  const st = useSyncExternalStore(useCallback((fn) => src.subscribe(fn), [src]), () => src.state());
+  const raw = useSyncExternalStore(useCallback((fn) => src.subscribe(fn), [src]), () => src.state());
+  const st = useMemo(() => withTyphoon(raw), [raw]);
   const cal = useMemo(() => calendarsOf(st.days), [st.days]);
   const route = useRoute();
   const [toastMsg, setToast] = useState<{ msg: string; bad: boolean } | null>(null);

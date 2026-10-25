@@ -6,6 +6,7 @@ import { checkLeaveDays, expandLeaveRange, sumDeduction } from '../src/rules/rul
 import { MIGRATIONS } from '../src/data/schema';
 import { parseGovCalendar } from '../src/data/calendarXlsx';
 import { importLegacyJson } from '../src/data/legacyImport';
+import { isAuto, withTyphoon } from '../src/ui/derive';
 import { makeGovCalendar } from './helpers/govCalendar';
 
 let SQL: SqlJsStatic;
@@ -70,8 +71,22 @@ describe('手動改放假日／上班日', () => {
 describe('Db', () => {
   it('建立後有預設假別與設定', () => {
     const st = Db.open(SQL).state();
-    expect(st.leaveTypes.map((t) => t.code)).toEqual(['annual', 'personal', 'sick', 'menstrual', 'official', 'late', 'absent']);
+    expect(st.leaveTypes.map((t) => t.code)).toEqual(['annual', 'personal', 'sick', 'menstrual', 'official', 'late', 'absent', 'typhoon']);
     expect(st.settings.annual_remind_days).toBe('30');
+  });
+  it('颱風停班日：當天在職員工自動扣一日薪，不能手動登記；還原後就沒有', async () => {
+    const { db, id } = await seeded();
+    const later = db.saveEmployee({ ...empInput, name: '林志明', gender: 'M', salary: 45000, hireDate: '2026-10-21' });
+    db.setDay('2026-10-20', true, '颱風停班');
+    db.setDay('2026-10-22', true, '公司活動');
+    const st = withTyphoon(db.state());
+    const auto = st.leaves.filter(isAuto);
+    expect(auto).toHaveLength(1);
+    expect(auto[0]).toMatchObject({ employeeId: id, date: '2026-10-20', type: 'typhoon', hours: 8, deduction: 1200, reason: '颱風停班' });
+    expect(st.leaves.some((l) => l.employeeId === later)).toBe(false);
+    expect(() => db.saveLeave({ employeeId: id, date: '2026-10-21', type: 'typhoon', start: '09:30', end: '18:30', reason: '' })).toThrow('颱風假不能手動登記');
+    db.resetDay('2026-10-20');
+    expect(withTyphoon(db.state()).leaves.filter(isAuto)).toEqual([]);
   });
   it('登記、編輯、刪除紀錄，扣款於存檔時算好', async () => {
     const { db, id } = await seeded();

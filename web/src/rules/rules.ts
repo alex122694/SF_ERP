@@ -153,17 +153,48 @@ export const DEFAULT_LEAVE_TYPES: LeaveType[] = [
   { code: 'official', name: '公假', payRatio: 1, unitMinutes: 30, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: false, color: 'official', sortOrder: 5 },
   { code: 'late', name: '遲到', payRatio: 0, unitMinutes: 1, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: false, color: 'late', sortOrder: 6 },
   { code: 'absent', name: '曠職', payRatio: 0, unitMinutes: 30, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: true, color: 'absent', sortOrder: 7 },
+  { code: 'typhoon', name: '颱風假', payRatio: 0, unitMinutes: 480, segmentOnly: false, femaleOnly: false, maxMinutes: null, confirmTwice: false, color: 'typhoon', sortOrder: 8 },
 ];
+
+// ---------- 颱風假 ----------
+
+/** 颱風假不能手動登記：手動改為放假日且原因含「颱風」的日子，當天在職的員工自動算一筆整天、不支薪的紀錄 */
+export const TYPHOON = 'typhoon';
+
+export const isTyphoonDay = (day: { override: boolean | null; reason: string | null } | undefined) =>
+  day?.override === true && !!day.reason?.includes('颱風');
+
+/** 颱風停班日自動產生的紀錄（不存檔，每次由行事曆與員工主檔算出；id 為負數，不能編輯、刪除） */
+export function typhoonLeaves(
+  employees: Employee[],
+  days: Map<string, { override: boolean | null; reason: string | null }>,
+  payRatio: number,
+): LeaveRecord[] {
+  const out: LeaveRecord[] = [];
+  const dates = [...days].filter(([, d]) => isTyphoonDay(d)).map(([date]) => date).sort();
+  for (const date of dates) {
+    for (const e of employees) {
+      if (!isEmployedOn(e, date)) continue;
+      out.push({
+        id: -(out.length + 1), employeeId: e.id, date, type: TYPHOON, start: SEGMENTS[0].start, end: SEGMENTS[0].end,
+        hours: HOURS_PER_DAY, deduction: deduction(HOURS_PER_DAY * 60, e.salary, payRatio), salary: e.salary, reason: days.get(date)!.reason ?? '',
+      });
+    }
+  }
+  return out;
+}
 
 export const LEAVE_TYPE_NOTES: Record<string, string> = {
   annual: '以半天為單位：上午、下午各算半天（4 h），全天算 1 天（8 h）；剩餘額度不足不能登記',
   absent: '沒有請假也沒有到班的缺勤；月曆上方有曠職快速導覽列，補請假時可快速找到並修改',
   menstrual: '限女性',
   late: '09:30 起算，依實際到班時間計分鐘，最晚到 12:00（12:00 以後請登記上午請假）',
+  typhoon: '不能手動登記：把某天改為放假日、原因含「颱風」（例如颱風停班）時，當天在職員工自動扣一日薪（本薪 ÷ 30）',
 };
 
 export function unitText(t: LeaveType): Msg {
   if (t.code === 'annual') return msg('半天（上午／下午）');
+  if (t.code === TYPHOON) return msg('全天（自動）');
   if (t.segmentOnly) return msg('上午／下午／全天');
   return msg('{0} 分鐘', [t.unitMinutes]);
 }
@@ -383,6 +414,7 @@ export function checkLeave(
   if (!emp) return fail(LEAVE_HINT.emp);
   if (!isEmployedOn(emp, input.date)) return fail(msg('{0} 在 {1} 不在職', [emp.name, input.date]));
   if (!t) return fail(LEAVE_HINT.type);
+  if (t.code === TYPHOON) return fail(msg('颱風假不能手動登記，請把這天改為放假日並填寫颱風停班原因'));
   if (t.femaleOnly && emp.gender !== 'F') return fail(msg('{0}只有女性可以選', [msg(t.name)]));
   if (!timesOk) return fail(msg('請選擇起訖時間'));
   if (t.code === 'late') {

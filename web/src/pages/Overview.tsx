@@ -73,17 +73,23 @@ export function OverviewPage() {
     const bytes = buildXlsx(sheet, { rows: rowsOut, widths: [14, 8, 12, 14, 12, 12, 14, 12], boldRows: [0, rowsOut.length - 1] });
     downloadBlob(`${sheet}_${from}~${to}.xlsx`, new Blob([bytes], { type: XLSX_TYPE }));
   };
-  // 請假明細總覽：一筆紀錄一列（姓名、部門、日期、假別、時間、時數），依員工、日期排序
+  // 請假明細總覽：一筆紀錄一列（姓名、部門、日期、假別、時間、時數），依員工、日期排序；同一人有多列時姓名、部門合併儲存格
   const exportDetail = (sel: typeof rows) => {
     const sheet = t('請假明細總覽');
     const deptOf = (id: number | null) => st.departments.find((d) => d.id === id)?.name ?? '';
     const list = sel.flatMap((r) => r.mine.map((l) => ({ r, l })));
+    const merges: { row: number; col: number; rows: number }[] = [];
+    let at = 1;
+    for (const r of sel) {
+      if (r.mine.length > 1) merges.push({ row: at, col: 0, rows: r.mine.length }, { row: at, col: 1, rows: r.mine.length });
+      at += r.mine.length;
+    }
     const rowsOut = [
       [t('姓名'), t('部門'), t('日期'), t('假別'), t('時間'), t('時數')],
       ...list.map(({ r, l }) => [r.e.name, deptOf(r.e.departmentId), l.date, typeName(typeOf(st, l.type)), `${l.start}–${l.end}`, amountText(l)]),
       [t('合計 {0} 筆', [list.length]), '', '', '', '', ''],
     ];
-    const bytes = buildXlsx(sheet, { rows: rowsOut, widths: [14, 14, 14, 12, 14, 12], boldRows: [0, rowsOut.length - 1] });
+    const bytes = buildXlsx(sheet, { rows: rowsOut, widths: [14, 14, 14, 12, 14, 12], boldRows: [0, rowsOut.length - 1], merges });
     downloadBlob(`${sheet}_${from}~${to}.xlsx`, new Blob([bytes], { type: XLSX_TYPE }));
   };
   const [exporting, setExporting] = useState(false);
