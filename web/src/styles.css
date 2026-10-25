@@ -110,10 +110,10 @@ select.input { padding-right: 8px; }
 /* 捲軸：細、圓角、透明軌道，滑鼠移上去轉為主題色（Chrome／Edge 用 ::-webkit-scrollbar，其他瀏覽器用標準屬性） */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
-::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 40%, transparent); border: 3px solid transparent; border-radius: 999px; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 55%, transparent); border: 3px solid transparent; border-radius: 999px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover, ::-webkit-scrollbar-thumb:active { background-color: var(--accent); }
 @supports not selector(::-webkit-scrollbar) {
-  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 40%, transparent) transparent; }
+  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text) 55%, transparent) transparent; }
 }
 .table-box { overflow-x: auto; }
 /* 頁面剛好佔滿視窗（扣掉內容區上下留白），表格框內自己捲動：標題列與合計列固定，只捲動員工資料列 */
@@ -122,6 +122,11 @@ select.input { padding-right: 8px; }
 .page.fill > .body-scroll { flex: 1 1 auto; min-height: 240px; overflow: auto; }
 .body-scroll thead th { position: sticky; top: 0; z-index: 2; background: var(--raised); }
 .body-scroll tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--raised); }
+/* 捲動停在整列（請假總覽為每位員工一組）：列的上緣對齊固定標題列下方，不會停在半列 */
+.body-scroll { scroll-snap-type: y mandatory; scroll-padding-top: 43px; }
+.body-scroll > .tbl:not(.ov) > tbody > tr > td:first-child,
+.body-scroll > .tbl.ov > tbody.grp > tr:first-child > td:first-child,
+.body-scroll > .tbl.ov > tbody.grp > tr.detail > td { scroll-snap-align: start; }
 /* 出缺勤月曆：月曆框內捲動時星期列固定 */
 .cal-card { overflow: hidden; }
 .cal-card .cal-head { position: sticky; top: 0; z-index: 2; background: var(--raised); }
@@ -272,8 +277,8 @@ dialog::backdrop { background: rgba(5,8,12,.55); }
 /* 請假總覽：每位員工一組（tbody），姓名、本薪、總扣款跨列；性別以極淡底色區分 */
 :root { --male: #6FB3FF; --female: #FF8FC0; }
 :root[data-theme="light"] { --male: #3D8BF0; --female: #E8609F; }
-.tbl.ov tbody.grp.m td { background: color-mix(in srgb, var(--male) 7%, transparent); }
-.tbl.ov tbody.grp.f td { background: color-mix(in srgb, var(--female) 7%, transparent); }
+.tbl.ov tbody.grp.m td, .tbl tr.m td { background: color-mix(in srgb, var(--male) 7%, transparent); }
+.tbl.ov tbody.grp.f td, .tbl tr.f td { background: color-mix(in srgb, var(--female) 7%, transparent); }
 .tbl.ov tbody.grp:hover td, .tbl.ov tbody.grp.open td { background: var(--accent-soft); }
 .tbl.ov tbody.grp tr.detail td { background: var(--accent-soft); }
 .tbl.ov tbody.grp td { border-bottom: none; }

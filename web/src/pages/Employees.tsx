@@ -94,7 +94,7 @@ export function EmployeesPage() {
                 const total = a.entitled + a.deferred;
                 const left = a.period ? daysBetween(today, a.period.last) : null;
                 return (
-                  <tr key={e.id} className={active ? 'click' : 'click off'} onClick={() => go(`#/employees/${e.id}`)}>
+                  <tr key={e.id} className={`click ${e.gender === 'F' ? 'f' : 'm'}${active ? '' : ' off'}`} onClick={() => go(`#/employees/${e.id}`)}>
                     <td>
                       <a href={`#/employees/${e.id}`} onClick={(ev) => ev.stopPropagation()} style={{ display: 'flex', gap: 12, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}>
                         <span className="av">{e.name[0]}</span>
