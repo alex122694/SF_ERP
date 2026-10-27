@@ -148,7 +148,7 @@ export class Db {
     const employees = this.rows('SELECT * FROM employee ORDER BY hire_date, id').map((r): Employee => ({
       id: Number(r.id), name: String(r.name), gender: r.gender as Employee['gender'], salary: Number(r.salary),
       hireDate: String(r.hire_date), annualBaseDate: String(r.annual_base_date), leaveDate: textOrNull(r.leave_date),
-      email: String(r.email), phone: String(r.phone), departmentId: r.department_id == null ? null : Number(r.department_id),
+      email: String(r.email), phone: String(r.phone), address: textOrNull(r.address), departmentId: r.department_id == null ? null : Number(r.department_id),
     }));
     const departments = this.rows('SELECT id, name FROM department ORDER BY id').map((r): Department => ({ id: Number(r.id), name: String(r.name) }));
     const leaves = this.rows('SELECT * FROM leave_record ORDER BY date, start_time, id').map((r): LeaveRecord => ({
@@ -190,12 +190,12 @@ export class Db {
     if (e.departmentId != null && !st.departments.some((d) => d.id === e.departmentId)) throw new UserError(msg('找不到部門'));
     const now = localStamp();
     if (id == null) {
-      this.run(`INSERT INTO employee (name, gender, salary, hire_date, annual_base_date, leave_date, email, phone, department_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [e.name, e.gender, e.salary, e.hireDate, e.annualBaseDate, e.leaveDate, e.email, e.phone, e.departmentId, now, now]);
+      this.run(`INSERT INTO employee (name, gender, salary, hire_date, annual_base_date, leave_date, email, phone, address, department_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [e.name, e.gender, e.salary, e.hireDate, e.annualBaseDate, e.leaveDate, e.email, e.phone, e.address, e.departmentId, now, now]);
       return this.lastId();
     }
-    this.run(`UPDATE employee SET name = ?, gender = ?, salary = ?, hire_date = ?, annual_base_date = ?, leave_date = ?, email = ?, phone = ?, department_id = ?, updated_at = ?
-      WHERE id = ?`, [e.name, e.gender, e.salary, e.hireDate, e.annualBaseDate, e.leaveDate, e.email, e.phone, e.departmentId, now, id]);
+    this.run(`UPDATE employee SET name = ?, gender = ?, salary = ?, hire_date = ?, annual_base_date = ?, leave_date = ?, email = ?, phone = ?, address = ?, department_id = ?, updated_at = ?
+      WHERE id = ?`, [e.name, e.gender, e.salary, e.hireDate, e.annualBaseDate, e.leaveDate, e.email, e.phone, e.address, e.departmentId, now, id]);
     return id;
   }
 

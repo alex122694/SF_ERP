@@ -69,6 +69,8 @@ export const M: Record<string, [string, string, string]> = {
   '年資': ["Seniority", "勤続年数", "근속 기간"],
   '信箱': ["Email", "メール", "이메일"],
   '電話': ["Phone", "電話", "전화"],
+  '地址': ["Address", "住所", "주소"],
+  '地址最多 200 字': ["Address must be at most 200 characters", "住所は200文字以内で入力してください", "주소는 최대 200자입니다"],
   '在職': ["Active", "在職", "재직"],
   '離職': ["Left", "退職", "퇴사"],
   '已離職': ["Left", "退職済み", "퇴사함"],

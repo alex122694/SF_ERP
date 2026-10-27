@@ -127,4 +127,8 @@ ALTER TABLE employee ADD COLUMN department_id INTEGER REFERENCES department(id);
   `
 INSERT OR IGNORE INTO leave_type VALUES ('typhoon', '颱風假', 0, 480, 0, 0, NULL, 0, 'typhoon', 8);
 `,
+  // 員工地址：可為空（NULL）
+  `
+ALTER TABLE employee ADD COLUMN address TEXT;
+`,
 ];

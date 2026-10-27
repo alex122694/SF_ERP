@@ -84,6 +84,7 @@ export function EmployeeDetailPage() {
             {emp.leaveDate && <KV k={t('離職日')} v={emp.leaveDate} />}
             <KV k={t('信箱')} v={emp.email || '—'} />
             <KV k={t('電話')} v={emp.phone || '—'} />
+            <KV k={t('地址')} v={emp.address || '—'} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

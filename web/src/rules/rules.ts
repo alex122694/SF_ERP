@@ -14,6 +14,7 @@ export interface Employee {
   leaveDate: string | null;
   email: string;
   phone: string;
+  address: string | null; // 地址（可為空）
   departmentId: number | null; // 部門（可為空）
 }
 
@@ -501,6 +502,7 @@ export interface EmployeeInput {
   leaveDate: string;
   email: string;
   phone: string;
+  address?: string | null; // 空白或 null＝未填
   departmentId?: number | string | null; // 空字串或 null＝未設定
 }
 
@@ -517,6 +519,7 @@ export function checkEmployee(
     leaveDate: input.leaveDate || null,
     email: String(input.email ?? '').trim(),
     phone: String(input.phone ?? '').trim(),
+    address: String(input.address ?? '').trim() || null,
     departmentId: input.departmentId ? Number(input.departmentId) : null,
   };
   const bad = (error: Msg) => ({ ok: false as const, error });
@@ -527,6 +530,7 @@ export function checkEmployee(
   if (!isDateStr(e.annualBaseDate)) return bad(msg('特休年資起算日格式不正確'));
   if (e.leaveDate && !isDateStr(e.leaveDate)) return bad(msg('離職日格式不正確'));
   if (e.leaveDate && e.leaveDate <= e.hireDate) return bad(msg('離職日須晚於到職日'));
+  if (e.address && e.address.length > 200) return bad(msg('地址最多 200 字'));
   if (e.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.email)) return bad(msg('信箱格式不正確'));
   if (existingId != null) {
     const mine = leaves.filter((l) => l.employeeId === existingId);

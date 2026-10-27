@@ -26,7 +26,7 @@ describe('shared/rules-cases.json', () => {
 
 const emp = (over: Partial<Employee> = {}): Employee => ({
   id: 1, name: '陳怡君', gender: 'F', salary: 36000, hireDate: '2021-03-01', annualBaseDate: '2021-03-01',
-  leaveDate: null, email: '', phone: '', departmentId: null, ...over,
+  leaveDate: null, email: '', phone: '', address: null, departmentId: null, ...over,
 });
 let nextId = 100;
 const rec = (date: string, type: string, start: string, end: string, employeeId = 1): LeaveRecord => ({

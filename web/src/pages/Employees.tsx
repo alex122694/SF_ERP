@@ -41,8 +41,8 @@ export function EmployeesPage() {
   const soon = rows.filter((r) => r.active && r.exp && !r.settled && daysBetween(today, r.exp) <= 30 && r.a.remaining > 0).length;
 
   const exportCsv = () => downloadCsv(`${t('員工主檔')}_${today}.csv`, [
-    ['姓名', '性別', '部門', '月本薪', '到職日', '特休年資起算日', '離職日', '信箱', '電話', '年資', '特休額度(h)', '特休已休(h)', '特休剩餘(h)', '週年到期'].map((h) => t(h)),
-    ...rows.map(({ e, a }) => [e.name, e.gender === 'F' ? t('女') : t('男'), deptName(e.departmentId), e.salary, e.hireDate, e.annualBaseDate, e.leaveDate ?? '', e.email, e.phone,
+    ['姓名', '性別', '部門', '月本薪', '到職日', '特休年資起算日', '離職日', '信箱', '電話', '地址', '年資', '特休額度(h)', '特休已休(h)', '特休剩餘(h)', '週年到期'].map((h) => t(h)),
+    ...rows.map(({ e, a }) => [e.name, e.gender === 'F' ? t('女') : t('男'), deptName(e.departmentId), e.salary, e.hireDate, e.annualBaseDate, e.leaveDate ?? '', e.email, e.phone, e.address ?? '',
       msgText(seniorityText(e.annualBaseDate, asOfDate(e, today))), a.entitled + a.deferred, a.used, a.remaining, a.period?.last ?? '']),
   ]);
 
@@ -139,7 +139,7 @@ export function EmployeeDialog({ emp, onClose }: { emp: Employee | null; onClose
   const [f, setF] = useState<EmployeeInput>(() => ({
     name: emp?.name ?? '', gender: emp?.gender ?? '', salary: emp?.salary ?? '', hireDate: emp?.hireDate ?? '',
     annualBaseDate: emp && emp.annualBaseDate !== emp.hireDate ? emp.annualBaseDate : '', leaveDate: emp?.leaveDate ?? '',
-    email: emp?.email ?? '', phone: emp?.phone ?? '', departmentId: emp?.departmentId ?? '',
+    email: emp?.email ?? '', phone: emp?.phone ?? '', address: emp?.address ?? '', departmentId: emp?.departmentId ?? '',
   }));
   const [error, setError] = useState('');
   const set = (k: keyof EmployeeInput) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF((o) => ({ ...o, [k]: e.target.value }));
@@ -174,6 +174,7 @@ export function EmployeeDialog({ emp, onClose }: { emp: Employee | null; onClose
           </label>
           <label className="field">{t('信箱')}<input className="input" type="email" value={f.email} onChange={set('email')} /></label>
           <label className="field">{t('電話')}<input className="input" value={f.phone} onChange={set('phone')} /></label>
+          <label className="field" style={{ gridColumn: '1 / -1' }}>{t('地址')}<input className="input" value={f.address ?? ''} onChange={set('address')} maxLength={200} /></label>
         </div>
         {error && <div role="alert" className="alert bad">{error}</div>}
         <div className="dlg-actions">
